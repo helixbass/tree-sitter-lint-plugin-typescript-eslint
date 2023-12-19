@@ -1,0 +1,253 @@
+plugins:
+  rustfmt:
+    path: ../tree-sitter-lint-plugin-rustfmt
+  rust-known-imports:
+    path: ../tree-sitter-lint-plugin-rust-known-imports
+rules:
+  rustfmt/rustfmt:
+    level: error
+  rust-known-imports/known-imports:
+    level: error
+    options:
+      known_imports:
+        get_instance_provider_factory:
+          module: crate
+          kind: function
+        CallSignature:
+          module: crate::kind
+          kind: static
+        InterfaceDeclaration:
+          module: crate::kind
+          kind: static
+        MethodSignature:
+          module: crate::kind
+          kind: static
+        MemberNameType:
+          module: crate::util
+          kind: type
+        FileRunContext:
+          module: tree_sitter_lint
+          kind: type
+        FromFileRunContext:
+          module: tree_sitter_lint
+          kind: type
+        QueryMatchContext:
+          module: tree_sitter_lint
+          kind: type
+        Rule:
+          module: tree_sitter_lint
+          kind: type
+        RuleTestExpectedError:
+          module: tree_sitter_lint
+          kind: type
+        RuleTestExpectedErrorBuilder:
+          module: tree_sitter_lint
+          kind: type
+        SkipOptionsBuilder:
+          module: tree_sitter_lint
+          kind: type
+        ViolationData:
+          module: tree_sitter_lint
+          kind: type
+        rule:
+          module: tree_sitter_lint
+          kind: macro
+        violation:
+          module: tree_sitter_lint
+          kind: macro
+        has_child_of_kind:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        first_non_comment_named_child:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        non_comment_named_children:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        text:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        tokens:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        num_non_comment_named_children:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        field:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        tid:
+          module: tree_sitter_lint::better_any
+          kind: macro
+        Node:
+          module: tree_sitter_lint::tree_sitter
+          kind: type
+        Point:
+          module: tree_sitter_lint::tree_sitter
+          kind: type
+        Tree:
+          module: tree_sitter_lint::tree_sitter
+          kind: type
+        TreeCursor:
+          module: tree_sitter_lint::tree_sitter
+          kind: type
+        RopeOrSlice:
+          module: tree_sitter_lint::tree_sitter_grep
+          kind: type
+        SupportedLanguage:
+          module: tree_sitter_lint::tree_sitter_grep
+          kind: type
+        Deserialize:
+          module: serde
+          kind: type
+        return_default_if_none:
+          module: squalid
+          kind: macro
+        return_if_none:
+          module: squalid
+          kind: macro
+        run_once:
+          module: squalid
+          kind: macro
+        json_object:
+          module: squalid
+          kind: macro
+        regex:
+          module: squalid
+          kind: macro
+        then_and:
+          module: squalid
+          kind: trait_method
+          trait: BoolExt
+        map_borrowed:
+          module: squalid
+          kind: trait_method
+          trait: CowExt
+        map_borrowed_ref:
+          module: squalid
+          kind: trait_method
+          trait: CowExt
+        map_cow:
+          module: squalid
+          kind: trait_method
+          trait: CowExt
+        map_cow_ref:
+          module: squalid
+          kind: trait_method
+          trait: CowExt
+        sliced:
+          module: squalid
+          kind: trait_method
+          trait: CowStrExt
+        sliced_owned:
+          module: squalid
+          kind: trait_method
+          trait: CowStrExt
+        trimmed:
+          module: squalid
+          kind: trait_method
+          trait: CowStrExt
+        trimmed_ref:
+          module: squalid
+          kind: trait_method
+          trait: CowStrExt
+        thrush:
+          module: squalid
+          kind: trait_method
+          trait: EverythingExt
+        when:
+          module: squalid
+          kind: trait_method
+          trait: EverythingExt
+        non_empty:
+          module: squalid
+          kind: trait_method
+          trait: NonEmpty
+        matches:
+          module: squalid
+          kind: trait_method
+          trait: OptionExt
+        as_double_deref:
+          module: squalid
+          kind: trait_method
+          trait: OptionExtDeref
+        sorted:
+          module: squalid
+          kind: trait_method
+          trait: SliceExtCloneOrd
+        Captures:
+          module: regex
+          kind: type
+        Regex:
+          module: regex
+          kind: type
+        Either:
+          module: itertools
+          kind: type
+        collect_vec:
+          module: itertools
+          kind: trait_method
+          trait: Itertools
+        instrument:
+          module: tracing
+          kind: attribute
+        trace:
+          module: tracing
+          kind: macro
+        Lazy:
+          module: once_cell::sync
+          kind: type
+        visit_reg_exp_ast:
+          module: regexpp_js
+          kind: function
+        RegExpParser:
+          module: regexpp_js
+          kind: type
+        RegExpValidator:
+          module: regexpp_js
+          kind: type
+        ValidatePatternFlags:
+          module: regexpp_js
+          kind: type
+        Wtf16:
+          module: regexpp_js
+          kind: type
+        iter:
+          module: std
+          kind: module
+        OnceCell:
+          module: std::cell
+          kind: type
+        Ref:
+          module: std::cell
+          kind: type
+        RefCell:
+          module: std::cell
+          kind: type
+        HashSet:
+          module: std::collections
+          kind: type
+        HashMap:
+          module: std::collections
+          kind: type
+        Rc:
+          module: std::rc
+          kind: type
+        Arc:
+          module: std::sync
+          kind: type
+        OnceLock:
+          module: std::sync
+          kind: type
+        Cow:
+          module: std::borrow
+          kind: type
+tree-sitter-lint-dependency:
+  path: ../tree-sitter-lint

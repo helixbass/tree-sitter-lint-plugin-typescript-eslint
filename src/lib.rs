@@ -1,14 +1,14 @@
-#![allow(clippy::into_iter_on_ref)]
+#![allow(non_upper_case_globals, clippy::into_iter_on_ref)]
 
 use tree_sitter_lint::{
     instance_provider_factory, FromFileRunContextInstanceProviderFactory, Plugin,
 };
 
+mod kind;
 mod rules;
+mod util;
 
-use rules::{
-    adjacent_overload_signatures_rule,
-};
+use rules::adjacent_overload_signatures_rule;
 
 pub type ProvidedTypes<'a> = ();
 

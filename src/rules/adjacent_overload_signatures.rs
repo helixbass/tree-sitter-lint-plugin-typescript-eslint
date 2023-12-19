@@ -1,6 +1,96 @@
 use std::sync::Arc;
 
-use tree_sitter_lint::{rule, violation, Rule};
+use crate::kind::CallSignature;
+use crate::kind::InterfaceDeclaration;
+
+use crate::util::MemberNameType;
+use squalid::OptionExt;
+use std::borrow::Cow;
+use tree_sitter_lint::tree_sitter::Node;
+use tree_sitter_lint::tree_sitter_grep::SupportedLanguage;
+use tree_sitter_lint::violation;
+use tree_sitter_lint::NodeExt;
+use tree_sitter_lint::QueryMatchContext;
+use tree_sitter_lint::{rule, Rule};
+
+#[derive(Clone)]
+struct Method<'a> {
+    name: Cow<'a, str>,
+    static_: bool,
+    call_signature: bool,
+    type_: MemberNameType,
+}
+
+fn get_member_method(member: Node) -> Option<Method> {
+    match member.kind() {
+        CallSignature => Some(Method {
+            name: "call".into(),
+            static_: false,
+            call_signature: true,
+            type_: MemberNameType::Normal,
+        }),
+        // MethodSignature => {
+        // }
+        _ => None,
+    }
+}
+
+fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
+    method2.matches(|method2| {
+        method1.name == method2.name
+            && method1.static_ == method2.static_
+            && method1.call_signature == method2.call_signature
+            && method1.type_ == method2.type_
+    })
+}
+
+fn get_members(node: Node) -> impl Iterator<Item = Node> {
+    match node.kind() {
+        InterfaceDeclaration => node.non_comment_named_children(SupportedLanguage::Javascript),
+        _ => unimplemented!(),
+    }
+}
+
+fn check_body_for_overload_methods<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) {
+    let mut last_method: Option<Method<'a>> = Default::default();
+    let mut seen_methods: Vec<Method<'a>> = Default::default();
+
+    for member in get_members(node) {
+        let Some(method) = get_member_method(member) else {
+            last_method = None;
+            continue;
+        };
+
+        match seen_methods
+            .iter()
+            .any(|seen_method| is_same_method(&method, Some(seen_method)))
+        {
+            true if !is_same_method(&method, last_method.as_ref()) => {
+                context.report(violation! {
+                    node => member,
+                    message_id => "adjacent_signature",
+                    data => {
+                        name => format!(
+                            "{}{}",
+                            if method.static_ {
+                                "static "
+                            } else {
+                                ""
+                            },
+                            method.name
+                        ),
+                    }
+                });
+            }
+            false => {
+                seen_methods.push(method.clone());
+            }
+            _ => (),
+        }
+
+        last_method = Some(method);
+    }
+}
 
 pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
     rule! {
@@ -10,13 +100,10 @@ pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
             adjacent_signature => "All {{name}} signatures should be adjacent.",
         ],
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
-                context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
-                });
+            r#"
+              (interface_declaration) @c
+            "# => |node, context| {
+                check_body_for_overload_methods(node, context);
             },
         ],
     }

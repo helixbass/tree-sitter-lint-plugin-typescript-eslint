@@ -150,6 +150,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1795ebc740ea791ffbe6685e0688ab1effec16c2864e0476db40bfdf0c02cb3d"
 
 [[package]]
+name = "bit-set"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0700ddab506f33b20a03b13996eccd309a48e5ff77d0d95926aa0210fb4e95f1"
+dependencies = [
+ "bit-vec",
+]
+
+[[package]]
+name = "bit-vec"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "349f9b6a179ed607305526ca489b34ad0a41aed5f7980fa90eb03160b69598fb"
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,6 +384,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "debug-cell"
+version = "0.1.1"
+source = "git+https://github.com/helixbass/debug-cell?rev=d94711a#d94711aaa1df98998bb01c1dec32e86a7ae29f2a"
+dependencies = [
+ "backtrace",
+]
+
+[[package]]
 name = "derive_builder"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -437,6 +460,16 @@ checksum = "a258e46cdc063eb8519c00b9fc845fc47bcfca4130e2f08e88665ceda8474245"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "fancy-regex"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7493d4c459da9f84325ad297371a6b2b8a162800873a22e3b6b6512e61d18c05"
+dependencies = [
+ "bit-set",
+ "regex",
 ]
 
 [[package]]
@@ -580,6 +613,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d897f394bad6a705d5f4104762e116a75639e470d80901eed05a860a95cb1904"
 
 [[package]]
+name = "id-arena"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25a2bc672d1148e28034f176e01fffebb08b35768468cc954630da77a1449005"
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -603,6 +642,7 @@ checksum = "d530e1a18b1cb4c484e6e34556a0d948706958449fca0cab753d649f2bce3d1f"
 dependencies = [
  "equivalent",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -610,6 +650,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -722,6 +771,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "natord"
+version = "1.0.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "308d96db8debc727c3fd9744aac51751243420e46edf401010908da7f8d5e57c"
+
+[[package]]
 name = "num_cpus"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -792,6 +847,12 @@ dependencies = [
  "smallvec",
  "windows-targets 0.48.5",
 ]
+
+[[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "percent-encoding"
@@ -938,6 +999,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 
 [[package]]
+name = "regexpp-js"
+version = "0.1.0"
+source = "git+https://github.com/helixbass/regexpp-js?rev=268cd8e#268cd8e2408ee6529bfeee92ae80041fa38d0705"
+dependencies = [
+ "debug-cell",
+ "derive_builder",
+ "id-arena",
+ "indexmap",
+ "itertools 0.12.0",
+ "once_cell",
+ "pathdiff",
+ "regex",
+ "serde",
+ "serde_bytes",
+ "squalid 0.0.1-dev.0 (git+https://github.com/helixbass/squalid?rev=ca9515c)",
+ "wtf8",
+]
+
+[[package]]
 name = "ropey"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1003,6 +1083,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab33ec92f677585af6d88c65593ae2375adde54efdbf16d597f2cbc7a6d368ff"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.193"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1021,6 +1110,16 @@ checksum = "3d1c7e3eac408d115102c4c24ad393e0821bb3a5df4d506a80f85f7a742a526b"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_regex"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8136f1a4ea815d7eac4101cfd0b16dc0cb5e1fe1b8609dfd728058656b7badf"
+dependencies = [
+ "regex",
  "serde",
 ]
 
@@ -1085,7 +1184,23 @@ dependencies = [
 [[package]]
 name = "squalid"
 version = "0.0.1-dev.0"
+source = "git+https://github.com/helixbass/squalid?rev=7f1af35#7f1af3556b22c7889913baa2ffab907adc6ef4cc"
+dependencies = [
+ "itertools 0.11.0",
+]
+
+[[package]]
+name = "squalid"
+version = "0.0.1-dev.0"
 source = "git+https://github.com/helixbass/squalid?rev=c079b88#c079b88fb761230f017513d225670e7c3f879e6c"
+
+[[package]]
+name = "squalid"
+version = "0.0.1-dev.0"
+source = "git+https://github.com/helixbass/squalid?rev=ca9515c#ca9515c6fc9291ab96ada609f66ca6ad8338a2cf"
+dependencies = [
+ "itertools 0.11.0",
+]
 
 [[package]]
 name = "static_assertions"
@@ -1501,7 +1616,7 @@ dependencies = [
  "const_format",
  "dashmap",
  "derive_builder",
- "itertools",
+ "itertools 0.11.0",
  "once_cell",
  "quote",
  "rayon",
@@ -1509,7 +1624,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
- "squalid",
+ "squalid 0.0.1-dev.0 (git+https://github.com/helixbass/squalid?rev=c079b88)",
  "tokio",
  "tower-lsp",
  "tracing",
@@ -1518,10 +1633,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "tree-sitter-lint-plugin-eslint-builtin"
+version = "0.1.0"
+dependencies = [
+ "Inflector",
+ "bitflags 2.4.1",
+ "const_format",
+ "derive_builder",
+ "fancy-regex",
+ "id-arena",
+ "itertools 0.12.0",
+ "natord",
+ "once_cell",
+ "regex",
+ "regexpp-js",
+ "serde",
+ "serde_json",
+ "serde_regex",
+ "squalid 0.0.1-dev.0 (git+https://github.com/helixbass/squalid?rev=7f1af35)",
+ "tracing",
+ "tree-sitter-lint",
+]
+
+[[package]]
 name = "tree-sitter-lint-plugin-typescript-eslint"
 version = "0.1.0"
 dependencies = [
+ "squalid 0.0.1-dev.0 (git+https://github.com/helixbass/squalid?rev=7f1af35)",
  "tree-sitter-lint",
+ "tree-sitter-lint-plugin-eslint-builtin",
 ]
 
 [[package]]
@@ -1940,6 +2080,12 @@ name = "windows_x86_64_msvc"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
+
+[[package]]
+name = "wtf8"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c01ae8492c38f52376efd3a17d0994b6bcf3df1e39c0226d458b7d81670b2a06"
 
 [[package]]
 name = "wyz"
