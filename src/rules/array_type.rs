@@ -1,7 +1,45 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use serde::Deserialize;
-use tree_sitter_lint::{rule, violation, Rule};
+use squalid::{EverythingExt, OptionExt};
+use tree_sitter_lint::{
+    range_between_ends, range_between_starts, rule, tree_sitter::Node,
+    tree_sitter_grep::SupportedLanguage, violation, NodeExt, QueryMatchContext, Rule,
+};
+use tree_sitter_lint_plugin_eslint_builtin::kind::Identifier;
+
+use crate::kind::{ArrayType, GenericType, PredefinedType, ReadonlyType, ThisType, TypeIdentifier};
+
+fn is_simple_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bool {
+    match node.kind() {
+        Identifier | PredefinedType | ArrayType | ThisType | TypeIdentifier => true,
+        GenericType => {
+            node.field("name")
+                .thrush(|name| name.kind() == TypeIdentifier && name.text(context) == "Array")
+                && node
+                    .field("type_arguments")
+                    .non_comment_named_children(SupportedLanguage::Javascript)
+                    .thrush(|mut type_arguments| {
+                        let Some(first_type_argument) = type_arguments.next() else {
+                            return true;
+                        };
+                        if type_arguments.next().is_some() {
+                            return false;
+                        }
+                        is_simple_type(first_type_argument, context)
+                    })
+        }
+        _ => false,
+    }
+}
+
+fn get_message_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> Cow<'a, str> {
+    if is_simple_type(node, context) {
+        node.text(context)
+    } else {
+        "T".into()
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -46,12 +84,74 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
             readonly_option: ArrayOption = options.readonly(),
         },
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
+            r#"
+              (array_type) @c
+            "# => |node, context| {
+                let is_readonly = node.parent().matches(|parent| parent.kind() == ReadonlyType);
+                let item_type_node = node.first_non_comment_named_child(SupportedLanguage::Javascript);
+
+                let current_option = if is_readonly {
+                    self.readonly_option
+                } else {
+                    self.default_option
+                };
+
+                if current_option == ArrayOption::Array ||
+                    current_option == ArrayOption::ArraySimple &&
+                        is_simple_type(item_type_node, context) {
+                    return;
+                }
+
+                let message_id = if current_option == ArrayOption::Generic {
+                    "error_string_generic"
+                } else {
+                    "error_string_generic_simple"
+                };
+                let error_node = if is_readonly {
+                    node.parent().unwrap()
+                } else {
+                    node
+                };
+
                 context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
+                    node => error_node,
+                    message_id => message_id,
+                    data => {
+                        class_name => if is_readonly {
+                            "ReadonlyArray"
+                        } else {
+                            "Array"
+                        },
+                        readonly_prefix => if is_readonly {
+                            "readonly "
+                        } else {
+                            ""
+                        },
+                        type => get_message_type(item_type_node, context).into_owned(),
+                    },
+                    fix => |fixer| {
+                        let type_node = item_type_node;
+                        let array_type = if is_readonly {
+                            "ReadonlyArray"
+                        } else {
+                            "Array"
+                        };
+
+                        // TODO: should check/revisit whether these are
+                        // guaranteed to both be applied (vs eg if only
+                        // one doesn't conflict with fixes from other rules
+                        // would it get applied) and if not then eg expose
+                        // an API that "couples" them?
+                        fixer.replace_text_range(
+                            range_between_starts(error_node.range(), type_node.range()),
+                            format!("{array_type}<"),
+                        );
+                        fixer.replace_text_range(
+                            range_between_ends(type_node.range(), error_node.range()),
+                            ">",
+                        );
+
+                    }
                 });
             },
         ],
@@ -628,7 +728,7 @@ mod tests {
                       options => { default => "array", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -671,7 +771,7 @@ mod tests {
                       options => { default => "array", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -688,7 +788,7 @@ mod tests {
                       options => { default => "array", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -718,7 +818,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -748,7 +848,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -778,7 +878,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -838,7 +938,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -868,7 +968,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -898,7 +998,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -911,7 +1011,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -928,7 +1028,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -945,7 +1045,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -958,7 +1058,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -971,7 +1071,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -988,7 +1088,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1005,7 +1105,7 @@ mod tests {
                       options => { default => "generic", readonly => "array" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1018,7 +1118,7 @@ mod tests {
                       options => { default => "generic", readonly => "array" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1065,7 +1165,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1078,7 +1178,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1108,7 +1208,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1125,7 +1225,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1138,7 +1238,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1151,7 +1251,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1168,7 +1268,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1185,7 +1285,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "bigint" },
                           line => 1,
                           column => 8,
@@ -1198,7 +1298,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1228,7 +1328,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1241,7 +1341,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1258,7 +1358,7 @@ mod tests {
                       options => { default => "generic", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1291,7 +1391,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "Bar" },
                           line => 1,
                           column => 21,
@@ -1304,7 +1404,7 @@ mod tests {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "Bar" },
                           line => 1,
                           column => 27,
@@ -1375,7 +1475,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 24,
@@ -1407,7 +1507,7 @@ let yyyy: Arr<Array<Array<Arr<string>>>> = [[[['2']]]];
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 3,
                           column => 15,
@@ -1455,7 +1555,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 2,
                           column => 27,
@@ -1468,7 +1568,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 13,
@@ -1481,7 +1581,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 17,
@@ -1494,7 +1594,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 24,
@@ -1524,7 +1624,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "errorStringGenericSimple",
+                          message_id => "error_string_generic_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 8,
@@ -1744,7 +1844,7 @@ function fooFunction(foo: ArrayClass<string>[]) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 31,
@@ -1757,7 +1857,7 @@ function fooFunction(foo: ArrayClass<string>[]) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "string" },
                           line => 1,
                           column => 8,
@@ -1770,7 +1870,7 @@ function fooFunction(foo: ArrayClass<string>[]) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 24,
@@ -1789,7 +1889,7 @@ let yyyy: Arr<Array<Array<Arr<string>>>> = [[[['2']]]];
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 3,
                           column => 15,
@@ -1814,7 +1914,7 @@ interface ArrayClass<T> {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 4,
                           column => 8,
@@ -1835,7 +1935,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 2,
                           column => 27,
@@ -1848,7 +1948,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 13,
@@ -1861,7 +1961,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 17,
@@ -1874,7 +1974,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 24,
@@ -1895,7 +1995,7 @@ interface FooInterface {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "string" },
                           line => 3,
                           column => 18,
@@ -1923,7 +2023,7 @@ interface FooInterface {
                       options => { default => "generic" },
                       errors => [
                         {
-                          message_id => "errorStringGeneric",
+                          message_id => "error_string_generic",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 28,

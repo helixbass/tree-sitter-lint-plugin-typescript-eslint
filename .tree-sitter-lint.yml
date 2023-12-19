@@ -184,6 +184,9 @@ rules:
         TemplateLiteralType:
           module: crate::kind
           kind: static
+        ThisType:
+          module: crate::kind
+          kind: static
         TupleParameter:
           module: crate::kind
           kind: static
@@ -200,6 +203,9 @@ rules:
           module: crate::kind
           kind: static
         TypeAssertion:
+          module: crate::kind
+          kind: static
+        TypeIdentifier:
           module: crate::kind
           kind: static
         TypeParameter:
@@ -568,6 +574,12 @@ rules:
         YieldExpression:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static
+        range_between_ends:
+          module: tree_sitter_lint
+          kind: function
+        range_between_starts:
+          module: tree_sitter_lint
+          kind: function
         FileRunContext:
           module: tree_sitter_lint
           kind: type
