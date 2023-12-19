@@ -82,7 +82,7 @@ fn get_members(node: Node) -> impl Iterator<Item = Node> {
         ObjectType | StatementBlock | Program | ClassBody => {
             node.non_comment_named_children(SupportedLanguage::Javascript)
         }
-        _ => unimplemented!(),
+        _ => unreachable!(),
     }
 }
 
