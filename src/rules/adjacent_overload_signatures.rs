@@ -6,11 +6,11 @@ use tree_sitter_lint::{
     QueryMatchContext, Rule,
 };
 use tree_sitter_lint_plugin_eslint_builtin::kind::{
-    ExportStatement, FunctionDeclaration, Program, StatementBlock,
+    ClassBody, ExportStatement, FunctionDeclaration, MethodDefinition, Program, StatementBlock,
 };
 
 use crate::{
-    ast_helpers::get_is_method_signature_static,
+    ast_helpers::get_is_member_static,
     kind::{AmbientDeclaration, CallSignature, FunctionSignature, MethodSignature, ObjectType},
     util::{get_name_from_member, MemberName, MemberNameType},
 };
@@ -40,12 +40,12 @@ fn get_member_method<'a>(
             call_signature: false,
             type_: MemberNameType::Normal,
         }),
-        MethodSignature => {
+        MethodDefinition | MethodSignature => {
             let MemberName { type_, name } = get_name_from_member(member, context);
             Some(Method {
                 name,
                 type_,
-                static_: get_is_method_signature_static(member),
+                static_: get_is_member_static(member),
                 call_signature: false,
             })
         }
@@ -70,7 +70,7 @@ fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
 
 fn get_members(node: Node) -> impl Iterator<Item = Node> {
     match node.kind() {
-        ObjectType | StatementBlock | Program => {
+        ObjectType | StatementBlock | Program | ClassBody => {
             node.non_comment_named_children(SupportedLanguage::Javascript)
         }
         _ => unimplemented!(),
@@ -130,6 +130,7 @@ pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
               (object_type) @c
               (statement_block) @c
               (program) @c
+              (class_body) @c
             "# => |node, context| {
                 check_body_for_overload_methods(node, context);
             },

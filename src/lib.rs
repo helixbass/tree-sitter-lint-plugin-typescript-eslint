@@ -7,6 +7,7 @@ use tree_sitter_lint::{
 mod ast_helpers;
 mod kind;
 mod rules;
+mod type_utils;
 mod util;
 
 use rules::adjacent_overload_signatures_rule;

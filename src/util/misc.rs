@@ -5,11 +5,15 @@ use tree_sitter_lint::{
 };
 use tree_sitter_lint_plugin_eslint_builtin::{
     assert_kind,
-    kind::{ComputedPropertyName, Identifier, PropertyIdentifier},
+    kind::{
+        ComputedPropertyName, Identifier, MethodDefinition, PrivatePropertyIdentifier,
+        PropertyIdentifier,
+    },
     utils::ast_utils::get_static_string_value,
 };
 
 use crate::kind::MethodSignature;
+use crate::type_utils::requires_quoting;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MemberNameType {
@@ -28,11 +32,18 @@ pub fn get_name_from_member<'a>(
     member: Node<'a>,
     context: &QueryMatchContext<'a, '_>,
 ) -> MemberName<'a> {
-    assert_kind!(member, MethodSignature /*TODO: others*/);
+    assert_kind!(
+        member,
+        MethodDefinition | MethodSignature /*TODO: others*/
+    );
     let key = member.field("name");
     match key.kind() {
         Identifier | PropertyIdentifier => MemberName {
             type_: MemberNameType::Normal,
+            name: key.text(context),
+        },
+        PrivatePropertyIdentifier => MemberName {
+            type_: MemberNameType::Private,
             name: key.text(context),
         },
         ComputedPropertyName => MemberName {
@@ -43,12 +54,12 @@ pub fn get_name_from_member<'a>(
         },
         tree_sitter_lint_plugin_eslint_builtin::kind::String => {
             let name = get_static_string_value(key, context).unwrap();
-            // if (requiresQuoting(name)) {
-            //   return {
-            //     type: MemberNameType.Quoted,
-            //     name: `"${name}"`,
-            //   };
-            // }
+            if requires_quoting(&name) {
+              return MemberName {
+                type_: MemberNameType::Quoted,
+                name: format!("\"{name}\"").into(),
+              };
+            }
             MemberName {
                 type_: MemberNameType::Normal,
                 name,

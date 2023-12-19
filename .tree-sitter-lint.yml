@@ -37,6 +37,9 @@ rules:
         TypeAliasDeclaration:
           module: crate::kind
           kind: static
+        requires_quoting:
+          module: crate::type_utils
+          kind: function
         get_name_from_member:
           module: crate::util
           kind: function
