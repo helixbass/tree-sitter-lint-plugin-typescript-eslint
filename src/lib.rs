@@ -4,6 +4,7 @@ use tree_sitter_lint::{
     instance_provider_factory, FromFileRunContextInstanceProviderFactory, Plugin,
 };
 
+mod ast_helpers;
 mod kind;
 mod rules;
 mod util;
@@ -15,9 +16,7 @@ pub type ProvidedTypes<'a> = ();
 pub fn instantiate() -> Plugin {
     Plugin {
         name: "typescript-eslint".to_owned(),
-        rules: vec![
-            adjacent_overload_signatures_rule(),
-        ],
+        rules: vec![adjacent_overload_signatures_rule()],
     }
 }
 

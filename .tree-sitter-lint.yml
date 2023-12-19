@@ -16,15 +16,354 @@ rules:
         CallSignature:
           module: crate::kind
           kind: static
+        get_is_method_signature_static:
+          module: crate::ast_helpers
+          kind: function
         InterfaceDeclaration:
           module: crate::kind
           kind: static
         MethodSignature:
           module: crate::kind
           kind: static
+        get_name_from_member:
+          module: crate::util
+          kind: function
+        MemberName:
+          module: crate::util
+          kind: type
         MemberNameType:
           module: crate::util
           kind: type
+        assert_kind:
+          module: tree_sitter_lint_plugin_eslint_builtin
+          kind: macro
+        Array:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Arguments:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ArrayPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ArrowFunction:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        AssignmentExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        AssignmentPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        AugmentedAssignmentExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        AwaitExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        BinaryExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        BreakStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        CallExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        CatchClause:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Class:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ClassBody:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ClassDeclaration:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ClassHeritage:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ClassStaticBlock:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Comment:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ComputedPropertyName:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ContinueStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        DebuggerStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Decorator:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        DoStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ElseClause:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        EmptyStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        EscapeSequence:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ExportClause:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ExportSpecifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ExportStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ExpressionStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        False:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        FieldDefinition:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        FinallyClause:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ForInStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        FormalParameters:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ForStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Function:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        FunctionDeclaration:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        GeneratorFunction:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        GeneratorFunctionDeclaration:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        GlimmerClosingTag:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        GlimmerOpeningTag:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        GlimmerTemplate:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        HashBangLine:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Identifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        IfStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Import:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ImportClause:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ImportSpecifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ImportStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxAttribute:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxClosingElement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxElement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxNamespaceName:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxOpeningElement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxSelfClosingElement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        JsxText:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        LabeledStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        LexicalDeclaration:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        MemberExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        MetaProperty:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        MethodDefinition:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        NamedImports:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        NamespaceExport:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        NamespaceImport:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        NewExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Null:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Object:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ObjectAssignmentPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ObjectPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        OptionalChain:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Pair:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        PairPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ParenthesizedExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        PrivatePropertyIdentifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Program:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        PropertyIdentifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        RegexFlags:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        RegexPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        RestPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ReturnStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SequenceExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ShorthandPropertyIdentifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ShorthandPropertyIdentifierPattern:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SpreadElement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        StatementBlock:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        StatementIdentifier:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SubscriptExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Super:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SwitchBody:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SwitchCase:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SwitchDefault:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        SwitchStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        TemplateString:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        TemplateSubstitution:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        TernaryExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        This:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        ThrowStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        True:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        TryStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        UnaryExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        Undefined:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        UpdateExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        VariableDeclaration:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        VariableDeclarator:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        WhileStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        WithStatement:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
+        YieldExpression:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: static
         FileRunContext:
           module: tree_sitter_lint
           kind: type
@@ -55,7 +394,7 @@ rules:
         violation:
           module: tree_sitter_lint
           kind: macro
-        has_child_of_kind:
+        field:
           module: tree_sitter_lint
           kind: trait_method
           trait: NodeExt
@@ -63,7 +402,23 @@ rules:
           module: tree_sitter_lint
           kind: trait_method
           trait: NodeExt
+        has_child_of_kind:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        non_comment_children:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        non_comment_children_and_field_names:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
         non_comment_named_children:
+          module: tree_sitter_lint
+          kind: trait_method
+          trait: NodeExt
+        num_non_comment_named_children:
           module: tree_sitter_lint
           kind: trait_method
           trait: NodeExt
@@ -72,14 +427,6 @@ rules:
           kind: trait_method
           trait: NodeExt
         tokens:
-          module: tree_sitter_lint
-          kind: trait_method
-          trait: NodeExt
-        num_non_comment_named_children:
-          module: tree_sitter_lint
-          kind: trait_method
-          trait: NodeExt
-        field:
           module: tree_sitter_lint
           kind: trait_method
           trait: NodeExt

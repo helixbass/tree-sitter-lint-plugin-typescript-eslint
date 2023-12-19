@@ -1,17 +1,16 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
-use crate::kind::CallSignature;
-use crate::kind::InterfaceDeclaration;
-
-use crate::util::MemberNameType;
 use squalid::OptionExt;
-use std::borrow::Cow;
-use tree_sitter_lint::tree_sitter::Node;
-use tree_sitter_lint::tree_sitter_grep::SupportedLanguage;
-use tree_sitter_lint::violation;
-use tree_sitter_lint::NodeExt;
-use tree_sitter_lint::QueryMatchContext;
-use tree_sitter_lint::{rule, Rule};
+use tree_sitter_lint::{
+    rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
+    QueryMatchContext, Rule,
+};
+
+use crate::{
+    ast_helpers::get_is_method_signature_static,
+    kind::{CallSignature, InterfaceDeclaration, MethodSignature},
+    util::{get_name_from_member, MemberName, MemberNameType},
+};
 
 #[derive(Clone)]
 struct Method<'a> {
@@ -21,7 +20,10 @@ struct Method<'a> {
     type_: MemberNameType,
 }
 
-fn get_member_method(member: Node) -> Option<Method> {
+fn get_member_method<'a>(
+    member: Node<'a>,
+    context: &QueryMatchContext<'a, '_>,
+) -> Option<Method<'a>> {
     match member.kind() {
         CallSignature => Some(Method {
             name: "call".into(),
@@ -29,8 +31,15 @@ fn get_member_method(member: Node) -> Option<Method> {
             call_signature: true,
             type_: MemberNameType::Normal,
         }),
-        // MethodSignature => {
-        // }
+        MethodSignature => {
+            let MemberName { type_, name } = get_name_from_member(member, context);
+            Some(Method {
+                name,
+                type_,
+                static_: get_is_method_signature_static(member),
+                call_signature: false,
+            })
+        }
         _ => None,
     }
 }
@@ -56,7 +65,7 @@ fn check_body_for_overload_methods<'a>(node: Node<'a>, context: &QueryMatchConte
     let mut seen_methods: Vec<Method<'a>> = Default::default();
 
     for member in get_members(node) {
-        let Some(method) = get_member_method(member) else {
+        let Some(method) = get_member_method(member, context) else {
             last_method = None;
             continue;
         };
