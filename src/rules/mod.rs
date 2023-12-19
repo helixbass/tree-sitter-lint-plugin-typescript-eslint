@@ -1,0 +1,3 @@
+mod adjacent_overload_signatures;
+
+pub use adjacent_overload_signatures::adjacent_overload_signatures_rule;
