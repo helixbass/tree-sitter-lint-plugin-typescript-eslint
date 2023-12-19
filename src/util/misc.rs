@@ -37,6 +37,13 @@ pub fn get_name_from_member<'a>(
         MethodDefinition | MethodSignature /*TODO: others*/
     );
     let key = member.field("name");
+    get_name_from_member_key(key, context)
+}
+
+fn get_name_from_member_key<'a>(
+    key: Node<'a>,
+    context: &QueryMatchContext<'a, '_>,
+) -> MemberName<'a> {
     match key.kind() {
         Identifier | PropertyIdentifier => MemberName {
             type_: MemberNameType::Normal,
@@ -46,12 +53,10 @@ pub fn get_name_from_member<'a>(
             type_: MemberNameType::Private,
             name: key.text(context),
         },
-        ComputedPropertyName => MemberName {
-            type_: MemberNameType::Normal,
-            name: key
-                .first_non_comment_named_child(SupportedLanguage::Javascript)
-                .text(context),
-        },
+        ComputedPropertyName => get_name_from_member_key(
+            key.first_non_comment_named_child(SupportedLanguage::Javascript),
+            context,
+        ),
         tree_sitter_lint_plugin_eslint_builtin::kind::String => {
             let name = get_static_string_value(key, context).unwrap();
             if requires_quoting(&name) {
@@ -65,6 +70,9 @@ pub fn get_name_from_member<'a>(
                 name,
             }
         }
-        _ => unimplemented!(),
+        _ => MemberName {
+            type_: MemberNameType::Expression,
+            name: key.text(context),
+        }
     }
 }
