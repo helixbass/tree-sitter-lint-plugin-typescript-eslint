@@ -16,28 +16,208 @@ rules:
         get_is_method_signature_static:
           module: crate::ast_helpers
           kind: function
+        AbstractMethodSignature:
+          module: crate::kind
+          kind: static
+        AbstractClassDeclaration:
+          module: crate::kind
+          kind: static
+        AccessibilityModifier:
+          module: crate::kind
+          kind: static
         AmbientDeclaration:
+          module: crate::kind
+          kind: static
+        ArrayType:
+          module: crate::kind
+          kind: static
+        AsExpression:
+          module: crate::kind
+          kind: static
+        Asserts:
+          module: crate::kind
+          kind: static
+        AssertsAnnotation:
           module: crate::kind
           kind: static
         CallSignature:
           module: crate::kind
           kind: static
+        ConditionalType:
+          module: crate::kind
+          kind: static
+        Constraint:
+          module: crate::kind
+          kind: static
         ConstructSignature:
+          module: crate::kind
+          kind: static
+        ConstructorType:
+          module: crate::kind
+          kind: static
+        DefaultType:
+          module: crate::kind
+          kind: static
+        EnumAssignment:
+          module: crate::kind
+          kind: static
+        EnumBody:
+          module: crate::kind
+          kind: static
+        EnumDeclaration:
+          module: crate::kind
+          kind: static
+        ExistentialType:
+          module: crate::kind
+          kind: static
+        ExtendsClause:
+          module: crate::kind
+          kind: static
+        ExtendsTypeClause:
           module: crate::kind
           kind: static
         FunctionSignature:
           module: crate::kind
           kind: static
+        FunctionType:
+          module: crate::kind
+          kind: static
+        GenericType:
+          module: crate::kind
+          kind: static
+        ImplementsClause:
+          module: crate::kind
+          kind: static
+        ImportAlias:
+          module: crate::kind
+          kind: static
+        ImportRequireClause:
+          module: crate::kind
+          kind: static
+        IndexSignature:
+          module: crate::kind
+          kind: static
+        IndexTypeQuery:
+          module: crate::kind
+          kind: static
+        InferType:
+          module: crate::kind
+          kind: static
+        InstantiationExpression:
+          module: crate::kind
+          kind: static
         InterfaceDeclaration:
+          module: crate::kind
+          kind: static
+        InternalModule:
+          module: crate::kind
+          kind: static
+        IntersectionType:
+          module: crate::kind
+          kind: static
+        LiteralType:
+          module: crate::kind
+          kind: static
+        LookupType:
+          module: crate::kind
+          kind: static
+        MappedTypeClause:
           module: crate::kind
           kind: static
         MethodSignature:
           module: crate::kind
           kind: static
+        Module:
+          module: crate::kind
+          kind: static
+        NestedTypeIdentifier:
+          module: crate::kind
+          kind: static
+        NonNullExpression:
+          module: crate::kind
+          kind: static
         ObjectType:
           module: crate::kind
           kind: static
+        OmittingTypeAnnotation:
+          module: crate::kind
+          kind: static
+        OptingTypeAnnotation:
+          module: crate::kind
+          kind: static
+        OptionalParameter:
+          module: crate::kind
+          kind: static
+        OptionalTupleParameter:
+          module: crate::kind
+          kind: static
+        OptionalType:
+          module: crate::kind
+          kind: static
+        OverrideModifier:
+          module: crate::kind
+          kind: static
+        PredefinedType:
+          module: crate::kind
+          kind: static
+        PropertySignature:
+          module: crate::kind
+          kind: static
+        PublicFieldDefinition:
+          module: crate::kind
+          kind: static
+        ReadonlyType:
+          module: crate::kind
+          kind: static
+        RequiredParameter:
+          module: crate::kind
+          kind: static
+        RestType:
+          module: crate::kind
+          kind: static
+        SatisfiesExpression:
+          module: crate::kind
+          kind: static
+        TemplateType:
+          module: crate::kind
+          kind: static
+        TemplateLiteralType:
+          module: crate::kind
+          kind: static
+        TupleParameter:
+          module: crate::kind
+          kind: static
+        TupleType:
+          module: crate::kind
+          kind: static
         TypeAliasDeclaration:
+          module: crate::kind
+          kind: static
+        TypeAnnotation:
+          module: crate::kind
+          kind: static
+        TypeArguments:
+          module: crate::kind
+          kind: static
+        TypeAssertion:
+          module: crate::kind
+          kind: static
+        TypeParameter:
+          module: crate::kind
+          kind: static
+        TypeParameters:
+          module: crate::kind
+          kind: static
+        TypePredicate:
+          module: crate::kind
+          kind: static
+        TypePredicateAnnotation:
+          module: crate::kind
+          kind: static
+        TypeQuery:
+          module: crate::kind
+          kind: static
+        UnionType:
           module: crate::kind
           kind: static
         requires_quoting:
