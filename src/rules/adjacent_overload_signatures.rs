@@ -55,7 +55,9 @@ fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
 
 fn get_members(node: Node) -> impl Iterator<Item = Node> {
     match node.kind() {
-        InterfaceDeclaration => node.non_comment_named_children(SupportedLanguage::Javascript),
+        InterfaceDeclaration => node
+            .field("body")
+            .non_comment_named_children(SupportedLanguage::Javascript),
         _ => unimplemented!(),
     }
 }

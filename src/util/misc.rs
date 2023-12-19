@@ -1,7 +1,10 @@
 use std::borrow::Cow;
 
 use tree_sitter_lint::{tree_sitter::Node, NodeExt, QueryMatchContext};
-use tree_sitter_lint_plugin_eslint_builtin::{assert_kind, kind::Identifier};
+use tree_sitter_lint_plugin_eslint_builtin::{
+    assert_kind,
+    kind::{Identifier, PropertyIdentifier},
+};
 
 use crate::kind::MethodSignature;
 
@@ -25,7 +28,7 @@ pub fn get_name_from_member<'a>(
     assert_kind!(member, MethodSignature /*TODO: others*/);
     let name = member.field("name");
     match name.kind() {
-        Identifier => MemberName {
+        Identifier | PropertyIdentifier => MemberName {
             type_: MemberNameType::Normal,
             name: name.text(context),
         },
