@@ -1635,6 +1635,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-lint-plugin-eslint-builtin"
 version = "0.1.0"
+source = "git+https://github.com/helixbass/tree-sitter-lint-plugin-eslint-builtin?rev=1f4cc62#1f4cc62914fc46d162d0c7f02a9fd74d019c8da2"
 dependencies = [
  "Inflector",
  "bitflags 2.4.1",
