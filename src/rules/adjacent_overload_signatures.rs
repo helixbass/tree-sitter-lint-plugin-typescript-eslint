@@ -5,10 +5,11 @@ use tree_sitter_lint::{
     rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
     QueryMatchContext, Rule,
 };
+use tree_sitter_lint_plugin_eslint_builtin::kind::{FunctionDeclaration, StatementBlock};
 
 use crate::{
     ast_helpers::get_is_method_signature_static,
-    kind::{CallSignature, MethodSignature, ObjectType},
+    kind::{CallSignature, FunctionSignature, MethodSignature, ObjectType},
     util::{get_name_from_member, MemberName, MemberNameType},
 };
 
@@ -25,10 +26,10 @@ fn get_member_method<'a>(
     context: &QueryMatchContext<'a, '_>,
 ) -> Option<Method<'a>> {
     match member.kind() {
-        CallSignature => Some(Method {
-            name: "call".into(),
+        FunctionSignature | FunctionDeclaration => Some(Method {
+            name: member.field("name").text(context),
             static_: false,
-            call_signature: true,
+            call_signature: false,
             type_: MemberNameType::Normal,
         }),
         MethodSignature => {
@@ -40,6 +41,12 @@ fn get_member_method<'a>(
                 call_signature: false,
             })
         }
+        CallSignature => Some(Method {
+            name: "call".into(),
+            static_: false,
+            call_signature: true,
+            type_: MemberNameType::Normal,
+        }),
         _ => None,
     }
 }
@@ -55,7 +62,9 @@ fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
 
 fn get_members(node: Node) -> impl Iterator<Item = Node> {
     match node.kind() {
-        ObjectType => node.non_comment_named_children(SupportedLanguage::Javascript),
+        ObjectType | StatementBlock => {
+            node.non_comment_named_children(SupportedLanguage::Javascript)
+        }
         _ => unimplemented!(),
     }
 }
@@ -111,6 +120,7 @@ pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
         listeners => [
             r#"
               (object_type) @c
+              (statement_block) @c
             "# => |node, context| {
                 check_body_for_overload_methods(node, context);
             },
@@ -391,7 +401,7 @@ mod tests {
 			}
                     "#,
                   ],
-                  invalid => [
+                invalid => [
                     {
                       code => r#"
 function wrap() {
