@@ -25,6 +25,12 @@ rules:
         MethodSignature:
           module: crate::kind
           kind: static
+        ObjectType:
+          module: crate::kind
+          kind: static
+        TypeAliasDeclaration:
+          module: crate::kind
+          kind: static
         get_name_from_member:
           module: crate::util
           kind: function

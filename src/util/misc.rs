@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use squalid::CowExt;
 use tree_sitter_lint::{
     tree_sitter::Node, tree_sitter_grep::SupportedLanguage, NodeExt, QueryMatchContext,
 };

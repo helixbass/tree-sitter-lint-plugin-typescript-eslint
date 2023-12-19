@@ -8,7 +8,7 @@ use tree_sitter_lint::{
 
 use crate::{
     ast_helpers::get_is_method_signature_static,
-    kind::{CallSignature, InterfaceDeclaration, MethodSignature},
+    kind::{CallSignature, MethodSignature, ObjectType},
     util::{get_name_from_member, MemberName, MemberNameType},
 };
 
@@ -55,9 +55,7 @@ fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
 
 fn get_members(node: Node) -> impl Iterator<Item = Node> {
     match node.kind() {
-        InterfaceDeclaration => node
-            .field("body")
-            .non_comment_named_children(SupportedLanguage::Javascript),
+        ObjectType => node.non_comment_named_children(SupportedLanguage::Javascript),
         _ => unimplemented!(),
     }
 }
@@ -112,7 +110,7 @@ pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
         ],
         listeners => [
             r#"
-              (interface_declaration) @c
+              (object_type) @c
             "# => |node, context| {
                 check_body_for_overload_methods(node, context);
             },
