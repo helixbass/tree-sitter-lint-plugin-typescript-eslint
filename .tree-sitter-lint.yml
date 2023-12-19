@@ -22,6 +22,12 @@ rules:
         AmbientDeclaration:
           module: crate::kind
           kind: static
+        CallSignature:
+          module: crate::kind
+          kind: static
+        ConstructSignature:
+          module: crate::kind
+          kind: static
         FunctionSignature:
           module: crate::kind
           kind: static
