@@ -91,13 +91,10 @@ fn check_body_for_overload_methods<'a>(node: Node<'a>, context: &QueryMatchConte
     let mut seen_methods: Vec<Method<'a>> = Default::default();
 
     for member in get_members(node) {
-        // println!("check_body_for_overload_methods() 1 member: {member:#?}");
         let Some(method) = get_member_method(member, context) else {
-            // println!("check_body_for_overload_methods() 2");
             last_method = None;
             continue;
         };
-        // println!("check_body_for_overload_methods() 3 method: {method:#?}");
 
         match seen_methods
             .iter()
