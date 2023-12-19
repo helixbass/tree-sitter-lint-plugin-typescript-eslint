@@ -37,6 +37,12 @@ rules:
         assert_kind:
           module: tree_sitter_lint_plugin_eslint_builtin
           kind: macro
+        get_cooked_value:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
+        get_static_string_value:
+          module: tree_sitter_lint_plugin_eslint_builtin::utils::ast_utils
+          kind: function
         Array:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static
