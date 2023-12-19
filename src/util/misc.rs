@@ -12,8 +12,7 @@ use tree_sitter_lint_plugin_eslint_builtin::{
     utils::ast_utils::get_static_string_value,
 };
 
-use crate::kind::MethodSignature;
-use crate::type_utils::requires_quoting;
+use crate::{kind::MethodSignature, type_utils::requires_quoting};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MemberNameType {
@@ -60,10 +59,10 @@ fn get_name_from_member_key<'a>(
         tree_sitter_lint_plugin_eslint_builtin::kind::String => {
             let name = get_static_string_value(key, context).unwrap();
             if requires_quoting(&name) {
-              return MemberName {
-                type_: MemberNameType::Quoted,
-                name: format!("\"{name}\"").into(),
-              };
+                return MemberName {
+                    type_: MemberNameType::Quoted,
+                    name: format!("\"{name}\"").into(),
+                };
             }
             MemberName {
                 type_: MemberNameType::Normal,
@@ -73,6 +72,6 @@ fn get_name_from_member_key<'a>(
         _ => MemberName {
             type_: MemberNameType::Expression,
             name: key.text(context),
-        }
+        },
     }
 }
