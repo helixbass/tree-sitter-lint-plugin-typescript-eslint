@@ -13,9 +13,6 @@ rules:
         get_instance_provider_factory:
           module: crate
           kind: function
-        CallSignature:
-          module: crate::kind
-          kind: static
         get_is_method_signature_static:
           module: crate::ast_helpers
           kind: function
