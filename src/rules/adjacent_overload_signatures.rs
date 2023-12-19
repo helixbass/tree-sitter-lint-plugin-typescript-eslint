@@ -5,11 +5,13 @@ use tree_sitter_lint::{
     rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
     QueryMatchContext, Rule,
 };
-use tree_sitter_lint_plugin_eslint_builtin::kind::{FunctionDeclaration, StatementBlock};
+use tree_sitter_lint_plugin_eslint_builtin::kind::{
+    ExportStatement, FunctionDeclaration, Program, StatementBlock,
+};
 
 use crate::{
     ast_helpers::get_is_method_signature_static,
-    kind::{CallSignature, FunctionSignature, MethodSignature, ObjectType},
+    kind::{AmbientDeclaration, CallSignature, FunctionSignature, MethodSignature, ObjectType},
     util::{get_name_from_member, MemberName, MemberNameType},
 };
 
@@ -26,6 +28,12 @@ fn get_member_method<'a>(
     context: &QueryMatchContext<'a, '_>,
 ) -> Option<Method<'a>> {
     match member.kind() {
+        AmbientDeclaration => member
+            .maybe_first_non_comment_named_child(SupportedLanguage::Javascript)
+            .and_then(|child| get_member_method(child, context)),
+        ExportStatement => member
+            .child_by_field_name("declaration")
+            .and_then(|declaration| get_member_method(declaration, context)),
         FunctionSignature | FunctionDeclaration => Some(Method {
             name: member.field("name").text(context),
             static_: false,
@@ -62,7 +70,7 @@ fn is_same_method(method1: &Method, method2: Option<&Method>) -> bool {
 
 fn get_members(node: Node) -> impl Iterator<Item = Node> {
     match node.kind() {
-        ObjectType | StatementBlock => {
+        ObjectType | StatementBlock | Program => {
             node.non_comment_named_children(SupportedLanguage::Javascript)
         }
         _ => unimplemented!(),
@@ -121,6 +129,7 @@ pub fn adjacent_overload_signatures_rule() -> Arc<dyn Rule> {
             r#"
               (object_type) @c
               (statement_block) @c
+              (program) @c
             "# => |node, context| {
                 check_body_for_overload_methods(node, context);
             },

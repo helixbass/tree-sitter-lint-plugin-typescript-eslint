@@ -19,6 +19,9 @@ rules:
         get_is_method_signature_static:
           module: crate::ast_helpers
           kind: function
+        AmbientDeclaration:
+          module: crate::kind
+          kind: static
         FunctionSignature:
           module: crate::kind
           kind: static

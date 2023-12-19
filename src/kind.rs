@@ -2,6 +2,7 @@
 
 pub type Kind = &'static str;
 
+pub const AmbientDeclaration: &str = "ambient_declaration";
 pub const CallSignature: &str = "call_signature";
 pub const FunctionSignature: &str = "function_signature";
 pub const InterfaceDeclaration: &str = "interface_declaration";
