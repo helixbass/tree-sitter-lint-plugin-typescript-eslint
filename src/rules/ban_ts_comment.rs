@@ -2,19 +2,26 @@ use std::{collections::HashMap, sync::Arc};
 
 use regex::Regex;
 use serde::Deserialize;
+use squalid::regex;
 use tree_sitter_lint::{rule, violation, Rule};
+use tree_sitter_lint_plugin_eslint_builtin::{
+    ast_helpers::{get_comment_contents, get_comment_type, CommentType},
+    AllComments,
+};
+
+use crate::util::get_string_length;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
 enum AllowWithDescription {
     AllowWithDescription,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
 struct DescriptionFormat {
     description_format: String,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Deserialize)]
 #[serde(untagged)]
 enum DirectiveConfig {
     Bool(bool),
@@ -117,13 +124,76 @@ pub fn ban_ts_comment_rule() -> Arc<dyn Rule> {
             minimum_description_length: usize = options.minimum_description_length(),
         },
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
-                context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
-                });
+            r#"
+              (program) @c
+            "# => |node, context| {
+                for &comment in context.retrieve::<AllComments<'a>>().iter() {
+                    let reg_exp = match get_comment_type(comment, context) {
+                        CommentType::Line => regex!(r#"^/*\s*@ts-(?<directive>expect-error|ignore|check|nocheck)(?<description>.*)"#),
+                        CommentType::Block => regex!(r#"^\s*(?:/|\*)*\s*@ts-(?<directive>expect-error|ignore|check|nocheck)(?<description>.*)"#),
+                    };
+
+                    let comment_contents = get_comment_contents(comment, context);
+                    let Some(match_) = reg_exp.captures(&comment_contents) else {
+                        return;
+                    };
+                    let directive = &match_["directive"];
+                    let description = &match_["description"];
+
+                    let full_directive = format!("ts-{directive}");
+
+                    let option = match &*full_directive {
+                        "ts-expect-error" => &self.ts_expect_error,
+                        "ts-ignore" => &self.ts_ignore,
+                        "ts-nocheck" => &self.ts_nocheck,
+                        "ts-check" => &self.ts_check,
+                        _ => unreachable!(),
+                    };
+                    match option {
+                        DirectiveConfig::Bool(true) => {
+                            if directive == "ignore" {
+                                context.report(violation! {
+                                    node => comment,
+                                    message_id => "ts_ignore_instead_of_expect_error",
+                                    // TODO: suggestions
+                                });
+                            } else {
+                                context.report(violation! {
+                                    data => {
+                                        directive => directive,
+                                    },
+                                    node => comment,
+                                    message_id => "ts_directive_comment",
+                                });
+                            }
+                        }
+                        DirectiveConfig::AllowWithDescription(_) | DirectiveConfig::DescriptionFormat(_) => {
+                            let format = self.description_formats.get(&&*full_directive);
+                            if get_string_length(description.trim()) < self.minimum_description_length {
+                                context.report(violation! {
+                                    data => {
+                                        directive => directive,
+                                        minimum_description_length => self.minimum_description_length,
+                                    },
+                                    node => comment,
+                                    message_id => "ts_directive_comment_requires_description",
+                                });
+                            } else if let Some(format) = format.filter(|format| {
+                                !format.is_match(description)
+                            }) {
+                                context.report(violation! {
+                                    data => {
+                                        directive => directive,
+                                        format => format.as_str(),
+                                    },
+                                    node => comment,
+                                    message_id => "ts_directive_comment_description_not_match_pattern",
+                                });
+                            }
+                        }
+                        _ => ()
+                    }
+                }
             },
         ],
     }
@@ -454,7 +524,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-expect-error 👨‍👩‍👧‍👦"#,
-                    options => 
+                    options =>
                       {
                         "ts-expect-error" => "allow-with-description",
                       },
@@ -486,7 +556,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-ignore",
-                    options => 
+                    options =>
                       { "ts-ignore" => true, "ts-expect-error" => "allow-with-description" },
                     errors => [
                       {
@@ -673,7 +743,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-ignore: TS1234 because xyz",
-                    options => 
+                    options =>
                       {
                         "ts-ignore" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -691,7 +761,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-ignore: TS1234",
-                    options => 
+                    options =>
                       {
                         "ts-ignore" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -708,7 +778,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-ignore    : TS1234 because xyz"#,
-                    options => 
+                    options =>
                       {
                         "ts-ignore" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -725,7 +795,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-ignore 👨‍👩‍👧‍👦"#,
-                    options => 
+                    options =>
                       {
                         "ts-ignore" => "allow-with-description",
                       },
@@ -853,7 +923,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-nocheck: TS1234 because xyz",
-                    options => 
+                    options =>
                       {
                         "ts-nocheck" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -871,7 +941,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-nocheck: TS1234",
-                    options => 
+                    options =>
                       {
                         "ts-nocheck" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -888,7 +958,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-nocheck    : TS1234 because xyz"#,
-                    options => 
+                    options =>
                       {
                         "ts-nocheck" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -905,7 +975,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-nocheck 👨‍👩‍👧‍👦"#,
-                    options => 
+                    options =>
                       {
                         "ts-nocheck" => "allow-with-description",
                       },
@@ -1026,7 +1096,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-check: TS1234 because xyz",
-                    options => 
+                    options =>
                       {
                         "ts-check" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -1044,7 +1114,7 @@ if (false) {
                   },
                   {
                     code => "// @ts-check: TS1234",
-                    options => 
+                    options =>
                       {
                         "ts-check" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -1061,7 +1131,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-check    : TS1234 because xyz"#,
-                    options => 
+                    options =>
                       {
                         "ts-check" => {
                           description_format => "^: TS\\d+ because .+$",
@@ -1078,7 +1148,7 @@ if (false) {
                   },
                   {
                     code => r#"// @ts-check 👨‍👩‍👧‍👦"#,
-                    options => 
+                    options =>
                       {
                         "ts-check" => "allow-with-description",
                       },

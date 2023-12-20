@@ -239,6 +239,9 @@ rules:
         get_name_from_member:
           module: crate::util
           kind: function
+        get_string_length:
+          module: crate::util
+          kind: function
         MemberName:
           module: crate::util
           kind: type
@@ -248,6 +251,15 @@ rules:
         assert_kind:
           module: tree_sitter_lint_plugin_eslint_builtin
           kind: macro
+        AllComments:
+          module: tree_sitter_lint_plugin_eslint_builtin
+          kind: type
+        get_comment_contents:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
+        get_comment_type:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
         get_cooked_value:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
@@ -257,6 +269,9 @@ rules:
         skip_nodes_of_type:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
+        CommentType:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: type
         Array:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static
