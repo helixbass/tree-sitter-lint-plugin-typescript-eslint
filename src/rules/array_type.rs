@@ -6,19 +6,24 @@ use tree_sitter_lint::{
     range_between_ends, range_between_starts, rule, tree_sitter::Node,
     tree_sitter_grep::SupportedLanguage, violation, NodeExt, QueryMatchContext, Rule,
 };
-use tree_sitter_lint_plugin_eslint_builtin::kind::Identifier;
+use tree_sitter_lint_plugin_eslint_builtin::kind::{Identifier, Undefined};
 
 use crate::{
     ast_helpers::NodeExtTypescript,
     kind::{
         ArrayType, ConstructorType, FunctionType, GenericType, InferType, IntersectionType,
-        PredefinedType, ReadonlyType, ThisType, TypeIdentifier, UnionType,
+        LiteralType, PredefinedType, ReadonlyType, ThisType, TypeIdentifier, UnionType,
     },
 };
 
 fn is_simple_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bool {
     match node.kind() {
         Identifier | PredefinedType | ArrayType | ThisType | TypeIdentifier => true,
+        LiteralType => {
+            node.first_non_comment_named_child(SupportedLanguage::Javascript)
+                .kind()
+                == Undefined
+        }
         GenericType => {
             node.field("name")
                 .thrush(|name| name.kind() == TypeIdentifier && name.text(context) == "Array")
@@ -903,7 +908,6 @@ mod tests {
                           column => 8,
                         },
                       ],
-                      only => true,
                     },
                     {
                       code => "let a: Array<number> = [];",
@@ -1621,6 +1625,8 @@ mod tests {
                           column => 20,
                         },
                       ],
+                      supported_language_languages => [Typescript],
+                      only => true,
                     },
                     {
                       code => "let z: Array = [3, '4'];",
