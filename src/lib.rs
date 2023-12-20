@@ -10,17 +10,24 @@ mod rules;
 mod type_utils;
 mod util;
 
-use rules::{adjacent_overload_signatures_rule, array_type_rule};
+use rules::{adjacent_overload_signatures_rule, array_type_rule, ban_ts_comment_rule};
+use tree_sitter_lint_plugin_eslint_builtin::AllComments;
 
 pub type ProvidedTypes<'a> = ();
 
 pub fn instantiate() -> Plugin {
     Plugin {
         name: "typescript-eslint".to_owned(),
-        rules: vec![adjacent_overload_signatures_rule(), array_type_rule()],
+        rules: vec![
+            adjacent_overload_signatures_rule(),
+            array_type_rule(),
+            ban_ts_comment_rule(),
+        ],
     }
 }
 
 pub fn get_instance_provider_factory() -> Box<dyn FromFileRunContextInstanceProviderFactory> {
-    Box::new(instance_provider_factory!(ProvidedTypes))
+    type ProvidedTypesForRuleTests<'a> = (AllComments<'a>,);
+
+    Box::new(instance_provider_factory!(ProvidedTypesForRuleTests))
 }
