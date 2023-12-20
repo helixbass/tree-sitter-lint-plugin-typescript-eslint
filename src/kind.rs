@@ -49,6 +49,7 @@ pub const OptionalParameter: &str = "optional_parameter";
 pub const OptionalTupleParameter: &str = "optional_tuple_parameter";
 pub const OptionalType: &str = "optional_type";
 pub const OverrideModifier: &str = "override_modifier";
+pub const ParenthesizedType: &str = "parenthesized_type";
 pub const PredefinedType: &str = "predefined_type";
 pub const PropertySignature: &str = "property_signature";
 pub const PublicFieldDefinition: &str = "public_field_definition";

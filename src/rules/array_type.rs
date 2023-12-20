@@ -8,9 +8,12 @@ use tree_sitter_lint::{
 };
 use tree_sitter_lint_plugin_eslint_builtin::kind::Identifier;
 
-use crate::kind::{
-    ArrayType, ConstructorType, FunctionType, GenericType, InferType, IntersectionType,
-    PredefinedType, ReadonlyType, ThisType, TypeIdentifier, UnionType,
+use crate::{
+    ast_helpers::NodeExtTypescript,
+    kind::{
+        ArrayType, ConstructorType, FunctionType, GenericType, InferType, IntersectionType,
+        PredefinedType, ReadonlyType, ThisType, TypeIdentifier, UnionType,
+    },
 };
 
 fn is_simple_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bool {
@@ -185,7 +188,7 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
                         type => get_message_type(item_type_node, context).into_owned(),
                     },
                     fix => |fixer| {
-                        let type_node = item_type_node;
+                        let type_node = item_type_node.skip_parenthesized_types();
                         let array_type = if is_readonly {
                             "ReadonlyArray"
                         } else {
@@ -259,7 +262,7 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
                     "error_string_array_simple"
                 };
 
-                let type_ = first_type_argument;
+                let type_ = first_type_argument.skip_parenthesized_types();
                 let type_parens = type_needs_parentheses(type_, context);
                 let parent_parens = !readonly_prefix.is_empty() &&
                     node.parent().matches(|parent| parent.kind() == ArrayType);
@@ -900,6 +903,7 @@ mod tests {
                           column => 8,
                         },
                       ],
+                      only => true,
                     },
                     {
                       code => "let a: Array<number> = [];",
