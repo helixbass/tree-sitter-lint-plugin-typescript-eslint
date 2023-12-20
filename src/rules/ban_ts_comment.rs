@@ -204,10 +204,11 @@ mod tests {
     use tree_sitter_lint::{rule_tests, RuleTester};
 
     use super::*;
+    use crate::get_instance_provider_factory;
 
     #[test]
     fn test_ban_ts_comment_rule() {
-        RuleTester::run(
+        RuleTester::run_with_from_file_run_context_instance_provider(
             ban_ts_comment_rule(),
             rule_tests! {
                 valid => [
@@ -1163,6 +1164,7 @@ if (false) {
                   },
                 ],
             },
+            get_instance_provider_factory(),
         )
     }
 }
