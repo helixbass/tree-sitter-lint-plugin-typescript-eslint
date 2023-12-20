@@ -208,9 +208,13 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
                     }
                 });
             },
-            r#"
+            r#"(
               (type_identifier) @c (#match? @c "^(?:Readonly)?Array$")
-            "# => |node, context| {
+            )"# => |node, context| {
+                if node.parent().matches(|parent| parent.kind() == GenericType) {
+                    return;
+                }
+
                 self.check_array_with_no_generic_params(node, node, context);
             },
             r#"
@@ -236,6 +240,9 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
                 } else {
                     self.default_option
                 };
+                if current_option == ArrayOption::Generic {
+                    return;
+                }
 
                 if current_option == ArrayOption::ArraySimple && !is_simple_type(first_type_argument, context) {
                     return;
@@ -866,7 +873,7 @@ mod tests {
                       options => { default => "array", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -960,7 +967,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -986,7 +993,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1020,7 +1027,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1080,7 +1087,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1106,7 +1113,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1140,7 +1147,7 @@ mod tests {
                       options => { default => "array-simple", readonly => "generic" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "number" },
                           line => 1,
                           column => 8,
@@ -1346,7 +1353,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1466,7 +1473,7 @@ mod tests {
                       options => { default => "generic", readonly => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "ReadonlyArray",
                             readonly_prefix => "readonly ",
@@ -1591,7 +1598,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "undefined" },
                           line => 1,
                           column => 8,
@@ -1604,7 +1611,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "string" },
                           line => 1,
                           column => 20,
@@ -1617,7 +1624,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "any" },
                           line => 1,
                           column => 8,
@@ -1643,7 +1650,7 @@ mod tests {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 1,
                           column => 15,
@@ -1689,7 +1696,7 @@ interface ArrayClass<T> {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "T" },
                           line => 3,
                           column => 8,
@@ -1762,7 +1769,7 @@ function barFunction(bar: Array<ArrayClass<String>>) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => {
                             class_name => "Array",
                             readonly_prefix => "",
@@ -1974,7 +1981,7 @@ function fooFunction(foo: ArrayClass<string>[]) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           data => { class_name => "Array", readonly_prefix => "", type => "any" },
                           line => 1,
                           column => 8,
@@ -1987,7 +1994,7 @@ function fooFunction(foo: ArrayClass<string>[]) {
                       options => { default => "array-simple" },
                       errors => [
                         {
-                          message_id => "error_string_arraySimple",
+                          message_id => "error_string_array_simple",
                           line => 1,
                           column => 8,
                         },
