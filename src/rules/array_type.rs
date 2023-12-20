@@ -8,7 +8,10 @@ use tree_sitter_lint::{
 };
 use tree_sitter_lint_plugin_eslint_builtin::kind::Identifier;
 
-use crate::kind::{ArrayType, GenericType, PredefinedType, ReadonlyType, ThisType, TypeIdentifier};
+use crate::kind::{
+    ArrayType, ConstructorType, FunctionType, GenericType, InferType, IntersectionType,
+    PredefinedType, ReadonlyType, ThisType, TypeIdentifier, UnionType,
+};
 
 fn is_simple_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bool {
     match node.kind() {
@@ -29,6 +32,15 @@ fn is_simple_type<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bo
                         is_simple_type(first_type_argument, context)
                     })
         }
+        _ => false,
+    }
+}
+
+fn type_needs_parentheses<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> bool {
+    match node.kind() {
+        GenericType => type_needs_parentheses(node.field("name"), context),
+        UnionType | FunctionType | IntersectionType | InferType | ConstructorType => true,
+        TypeIdentifier => node.text(context) == "ReadonlyArray",
         _ => false,
     }
 }
@@ -77,11 +89,54 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
             error_string_generic_simple => "Array type using '{{readonly_prefix}}{{type}}[]' is forbidden for non-simple types. Use '{{class_name}}<{{type}}>' instead.",
         ],
         fixable => true,
+        allow_self_conflicting_fixes => true,
         options_type => Options,
         state => {
             [per-config]
             default_option: ArrayOption = options.default(),
             readonly_option: ArrayOption = options.readonly(),
+        },
+        methods => {
+            fn check_array_with_no_generic_params(&self, node_to_report: Node<'a>, inner_node: Node<'a>, context: &QueryMatchContext<'a, '_>) {
+                let is_readonly_array_type = inner_node.text(context) == "ReadonlyArray";
+                let current_option = if is_readonly_array_type {
+                    self.readonly_option
+                } else {
+                    self.default_option
+                };
+
+                if current_option == ArrayOption::Generic {
+                    return;
+                }
+
+                let readonly_prefix =  if is_readonly_array_type {
+                    "readonly "
+                } else {
+                    ""
+                };
+                let message_id = if current_option == ArrayOption::Array {
+                    "error_string_array"
+                } else {
+                    "error_string_array_simple"
+                };
+
+                context.report(violation! {
+                    node => node_to_report,
+                    message_id => message_id,
+                    data => {
+                        class_name => if is_readonly_array_type {
+                            "ReadonlyArray"
+                        } else {
+                            "Array"
+                        },
+                        readonly_prefix => readonly_prefix,
+                        type_ => "any",
+                    },
+                    fix => |fixer| {
+                        fixer.replace_text(node_to_report, format!("{readonly_prefix}any[]"));
+                    }
+                });
+            }
         },
         listeners => [
             r#"
@@ -150,10 +205,110 @@ pub fn array_type_rule() -> Arc<dyn Rule> {
                             range_between_ends(type_node.range(), error_node.range()),
                             ">",
                         );
-
                     }
                 });
             },
+            r#"
+              (type_identifier) @c (#match? @c "^(?:Readonly)?Array$")
+            "# => |node, context| {
+                self.check_array_with_no_generic_params(node, node, context);
+            },
+            r#"
+              (generic_type
+                name: (type_identifier) @inner (#match? @inner "^(?:Readonly)?Array$")
+              ) @outer
+            "# => |captures, context| {
+                let node = captures["outer"];
+                let num_type_arguments = node.field("type_arguments").num_non_comment_named_children(SupportedLanguage::Javascript);
+                let inner_node = node.field("name");
+                if num_type_arguments == 0 {
+                    return self.check_array_with_no_generic_params(node, inner_node, context);
+                }
+
+                if num_type_arguments != 1 {
+                    return;
+                }
+                let first_type_argument = node.field("type_arguments").non_comment_named_children(SupportedLanguage::Javascript).next().unwrap();
+
+                let is_readonly_array_type = inner_node.text(context) == "ReadonlyArray";
+                let current_option = if is_readonly_array_type {
+                    self.readonly_option
+                } else {
+                    self.default_option
+                };
+
+                if current_option == ArrayOption::ArraySimple && !is_simple_type(first_type_argument, context) {
+                    return;
+                }
+
+                let readonly_prefix =  if is_readonly_array_type {
+                    "readonly "
+                } else {
+                    ""
+                };
+                let message_id = if current_option == ArrayOption::Array {
+                    "error_string_array"
+                } else {
+                    "error_string_array_simple"
+                };
+
+                let type_ = first_type_argument;
+                let type_parens = type_needs_parentheses(type_, context);
+                let parent_parens = !readonly_prefix.is_empty() &&
+                    node.parent().matches(|parent| parent.kind() == ArrayType);
+
+
+                context.report(violation! {
+                    node => node,
+                    message_id => message_id,
+                    data => {
+                        class_name => if is_readonly_array_type {
+                            "ReadonlyArray"
+                        } else {
+                            "Array"
+                        },
+                        readonly_prefix => readonly_prefix,
+                        type_ => get_message_type(type_, context),
+                    },
+                    fix => |fixer| {
+                        let start = format!(
+                            "{}{readonly_prefix}{}",
+                            if parent_parens {
+                                "("
+                            } else {
+                                ""
+                            },
+                            if type_parens {
+                                "("
+                            } else {
+                                ""
+                            },
+                        );
+                        let end = format!(
+                            "{}[]{}",
+                            if type_parens {
+                                ")"
+                            } else {
+                                ""
+                            },
+                            if parent_parens {
+                                ")"
+                            } else {
+                                ""
+                            },
+                        );
+
+                        fixer.replace_text_range(
+                            range_between_starts(node.range(), type_.range()),
+                            start,
+                        );
+                        fixer.replace_text_range(
+                            range_between_ends(type_.range(), node.range()),
+                            end,
+                        );
+                    }
+                });
+            }
         ],
     }
 }
