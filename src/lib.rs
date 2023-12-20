@@ -10,14 +10,18 @@ mod rules;
 mod type_utils;
 mod util;
 
-use rules::{adjacent_overload_signatures_rule, array_type_rule};
+use rules::{adjacent_overload_signatures_rule, array_type_rule, ban_ts_comment_rule};
 
 pub type ProvidedTypes<'a> = ();
 
 pub fn instantiate() -> Plugin {
     Plugin {
         name: "typescript-eslint".to_owned(),
-        rules: vec![adjacent_overload_signatures_rule(), array_type_rule()],
+        rules: vec![
+            adjacent_overload_signatures_rule(),
+            array_type_rule(),
+            ban_ts_comment_rule(),
+        ],
     }
 }
 
