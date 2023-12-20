@@ -12,16 +12,17 @@ use tree_sitter_lint_plugin_eslint_builtin::{
 use crate::util::get_string_length;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 enum AllowWithDescription {
     AllowWithDescription,
 }
 
-#[derive(Clone, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 struct DescriptionFormat {
     description_format: String,
 }
 
-#[derive(Clone, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 #[serde(untagged)]
 enum DirectiveConfig {
     Bool(bool),
@@ -47,16 +48,16 @@ impl From<DescriptionFormat> for DirectiveConfig {
     }
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(default)]
 struct Options {
-    #[serde(rename = "kebab-case")]
+    #[serde(rename = "ts-expect-error")]
     ts_expect_error: Option<DirectiveConfig>,
-    #[serde(rename = "kebab-case")]
+    #[serde(rename = "ts-ignore")]
     ts_ignore: Option<DirectiveConfig>,
-    #[serde(rename = "kebab-case")]
+    #[serde(rename = "ts-nocheck")]
     ts_nocheck: Option<DirectiveConfig>,
-    #[serde(rename = "kebab-case")]
+    #[serde(rename = "ts-check")]
     ts_check: Option<DirectiveConfig>,
     minimum_description_length: Option<usize>,
 }
@@ -112,7 +113,7 @@ pub fn ban_ts_comment_rule() -> Arc<dyn Rule> {
             description_formats: HashMap<&'static str, Regex> = {
                 let mut description_formats: HashMap<&'static str, Regex> = Default::default();
                 populate_description_format(&mut description_formats, options.ts_expect_error(), "ts-expect-error");
-                populate_description_format(&mut description_formats, options.ts_ignore(), "ts-ignore-error");
+                populate_description_format(&mut description_formats, options.ts_ignore(), "ts-ignore");
                 populate_description_format(&mut description_formats, options.ts_nocheck(), "ts-nocheck");
                 populate_description_format(&mut description_formats, options.ts_check(), "ts-check");
                 description_formats
@@ -543,7 +544,7 @@ if (false) {
                     options => { "ts-ignore" => true, "ts-expect-error" => true },
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -561,7 +562,7 @@ if (false) {
                       { "ts-ignore" => true, "ts-expect-error" => "allow-with-description" },
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -577,7 +578,7 @@ if (false) {
                     code => "// @ts-ignore",
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -594,7 +595,7 @@ if (false) {
                     options => { "ts-ignore" => true },
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -615,7 +616,7 @@ if (false) {
                     options => { "ts-ignore" => true },
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 2,
                         column => 1,
                         // suggestions: [
@@ -636,7 +637,7 @@ if (false) {
                     options => { "ts-ignore" => true, "ts-expect-error" => false },
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -652,7 +653,7 @@ if (false) {
                     code => "// @ts-ignore: Suppress next line",
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -668,7 +669,7 @@ if (false) {
                     code => "/////@ts-ignore: Suppress next line",
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 1,
                         column => 1,
                         // suggestions: [
@@ -689,7 +690,7 @@ if (false) {
                     "#,
                     errors => [
                       {
-                        message_id => "tsIgnoreInsteadOfExpectError",
+                        message_id => "ts_ignore_instead_of_expect_error",
                         line => 3,
                         column => 3,
                         // suggestions: [
