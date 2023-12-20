@@ -1,6 +1,22 @@
 use std::sync::Arc;
 
-use tree_sitter_lint::{rule, violation, Rule};
+use squalid::regex;
+use tree_sitter_lint::{
+    rule,
+    tree_sitter::{Point, Range},
+    violation, Rule,
+};
+use tree_sitter_lint_plugin_eslint_builtin::{
+    ast_helpers::{get_comment_contents, get_comment_type, CommentType},
+    AllComments,
+};
+
+fn to_text(text: &str, type_: CommentType) -> String {
+    match type_ {
+        CommentType::Line => ["//", text.trim()].join(" "),
+        CommentType::Block => ["/*", text.trim(), "*/"].join(" "),
+    }
+}
 
 pub fn ban_tslint_comment_rule() -> Arc<dyn Rule> {
     rule! {
@@ -11,13 +27,53 @@ pub fn ban_tslint_comment_rule() -> Arc<dyn Rule> {
         ],
         fixable => true,
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
-                context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
-                });
+            r#"
+              (program) @c
+            "# => |node, context| {
+                for &c in context.retrieve::<AllComments<'a>>().iter() {
+                    let comment_contents = get_comment_contents(c, context);
+                    if regex!(r#"^\s*tslint:(enable|disable)(?:-(line|next-line))?(:|\s|$)"#).is_match(&comment_contents) {
+                        context.report(violation! {
+                            data => {
+                                text => to_text(&comment_contents, get_comment_type(c, context)),
+                            },
+                            node => c,
+                            message_id => "comment_detected",
+                            fix => |fixer| {
+                                let should_remove_byte_before_comment_start = c.start_position().column > 0;
+                                let should_remove_byte_after_comment_end = c.end_byte() < context.file_run_context.tree.root_node().end_byte();
+                                fixer.remove_range(Range {
+                                    start_byte: if should_remove_byte_before_comment_start {
+                                        c.start_byte() - 1
+                                    } else {
+                                        c.start_byte()
+                                    },
+                                    end_byte: if should_remove_byte_after_comment_end {
+                                        c.end_byte() + 1
+                                    } else {
+                                        c.end_byte()
+                                    },
+                                    start_point: Point {
+                                        row: c.start_position().row,
+                                        column: if should_remove_byte_before_comment_start {
+                                            c.start_position().column - 1
+                                        } else {
+                                            c.start_position().column
+                                        },
+                                    },
+                                    end_point: Point {
+                                        row: c.end_position().row,
+                                        column: if should_remove_byte_after_comment_end {
+                                            c.end_position().column + 1
+                                        } else {
+                                            c.end_position().column
+                                        },
+                                    },
+                                });
+                            }
+                        });
+                    }
+                }
             },
         ],
     }
@@ -28,10 +84,11 @@ mod tests {
     use tree_sitter_lint::{rule_tests, RuleTester};
 
     use super::*;
+    use crate::get_instance_provider_factory;
 
     #[test]
     fn test_ban_tslint_comment_rule() {
-        RuleTester::run(
+        RuleTester::run_with_from_file_run_context_instance_provider(
             ban_tslint_comment_rule(),
             rule_tests! {
                 valid => [
@@ -156,6 +213,7 @@ console.log(woah);
                   },
                 ],
             },
+            get_instance_provider_factory(),
         )
     }
 }
