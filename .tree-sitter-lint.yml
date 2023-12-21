@@ -260,6 +260,12 @@ rules:
         AllComments:
           module: tree_sitter_lint_plugin_eslint_builtin
           kind: type
+        CommentType:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: type
+        MethodDefinitionKind:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: type
         get_comment_contents:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
@@ -269,15 +275,24 @@ rules:
         get_cooked_value:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
-        get_static_string_value:
-          module: tree_sitter_lint_plugin_eslint_builtin::utils::ast_utils
+        get_method_definition_kind:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
+        is_simple_template_literal:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
+        is_tagged_template_expression:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
         skip_nodes_of_type:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
-        CommentType:
-          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
-          kind: type
+        get_static_string_value:
+          module: tree_sitter_lint_plugin_eslint_builtin::utils::ast_utils
+          kind: function
+        is_literal_kind:
+          module: tree_sitter_lint_plugin_eslint_builtin::kind
+          kind: function
         Array:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static

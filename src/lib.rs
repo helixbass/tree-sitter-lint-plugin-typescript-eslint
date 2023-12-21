@@ -3,6 +3,7 @@
 use tree_sitter_lint::{
     instance_provider_factory, FromFileRunContextInstanceProviderFactory, Plugin,
 };
+use tree_sitter_lint_plugin_eslint_builtin::AllComments;
 
 mod ast_helpers;
 mod kind;
@@ -12,9 +13,8 @@ mod util;
 
 use rules::{
     adjacent_overload_signatures_rule, array_type_rule, ban_ts_comment_rule,
-    ban_tslint_comment_rule, ban_types_rule,
+    ban_tslint_comment_rule, ban_types_rule, class_literal_property_style_rule,
 };
-use tree_sitter_lint_plugin_eslint_builtin::AllComments;
 
 pub type ProvidedTypes<'a> = ();
 
@@ -27,6 +27,7 @@ pub fn instantiate() -> Plugin {
             ban_ts_comment_rule(),
             ban_tslint_comment_rule(),
             ban_types_rule(),
+            class_literal_property_style_rule(),
         ],
     }
 }
