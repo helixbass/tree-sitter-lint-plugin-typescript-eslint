@@ -131,7 +131,9 @@ static DEFAULT_TYPES: Lazy<Types> = Lazy::new(|| {
 });
 
 fn remove_spaces(str_: &str) -> Cow<'_, str> {
-    regex!(r#"\s"#).replace_all(str_, "")
+    let ret = regex!(r#"\s"#).replace_all(str_, "");
+    println!("remove_spaces() input: {str_:#?}, ret: {ret:#?}");
+    ret
 }
 
 fn stringify_node<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> Cow<'a, str> {
@@ -141,7 +143,7 @@ fn stringify_node<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> Co
 fn get_custom_message(banned_type: &BanConfig) -> String {
     match banned_type {
         BanConfig::String(banned_type) => format!(" {banned_type}"),
-        BanConfig::Object(banned_type) if banned_type.message.as_ref().non_empty().is_some() => {
+        BanConfig::Object(banned_type) if banned_type.message.as_ref().is_non_empty() => {
             format!(" {}", banned_type.message.as_ref().unwrap())
         }
         _ => "".to_owned(),
