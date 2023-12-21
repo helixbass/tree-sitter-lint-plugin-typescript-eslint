@@ -184,7 +184,9 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
                 if let Some(options_types) = options.types.as_ref() {
                     types.extend(options_types.clone());
                 }
-                types.into_iter().map(|(type_, data)| (remove_spaces(&type_).into_owned(), data)).collect()
+                let ret = types.into_iter().map(|(type_, data)| (remove_spaces(&type_).into_owned(), data)).collect();
+                println!("options: {options:#?}, banned_types: {ret:#?}");
+                ret
             },
         },
         methods => {
