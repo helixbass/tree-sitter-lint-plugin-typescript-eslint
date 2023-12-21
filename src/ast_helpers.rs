@@ -4,7 +4,10 @@ use tree_sitter_lint_plugin_eslint_builtin::{
     assert_kind, ast_helpers::skip_nodes_of_type, kind::MethodDefinition,
 };
 
-use crate::kind::{InterfaceDeclaration, MethodSignature, ObjectType, ParenthesizedType};
+use crate::kind::{
+    InterfaceDeclaration, MethodSignature, NestedTypeIdentifier, ObjectType, ParenthesizedType,
+    TypeIdentifier, TypeParameter,
+};
 
 pub fn get_is_member_static(node: Node) -> bool {
     assert_kind!(node, MethodDefinition | MethodSignature);
@@ -28,4 +31,15 @@ pub fn get_is_type_literal(node: Node) -> bool {
         && !node
             .parent()
             .matches(|parent| parent.kind() == InterfaceDeclaration && parent.field("body") == node)
+}
+
+pub fn get_is_type_reference(node: Node) -> bool {
+    assert_kind!(node, TypeIdentifier);
+    if node
+        .parent()
+        .matches(|parent| matches!(parent.kind(), NestedTypeIdentifier | TypeParameter))
+    {
+        return false;
+    }
+    true
 }

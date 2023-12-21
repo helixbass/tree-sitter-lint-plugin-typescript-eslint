@@ -19,6 +19,9 @@ rules:
         get_is_type_literal:
           module: crate::ast_helpers
           kind: function
+        get_is_type_reference:
+          module: crate::ast_helpers
+          kind: function
         skip_parenthesized_types:
           module: crate::ast_helpers
           kind: trait_method

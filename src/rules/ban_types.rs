@@ -3,13 +3,13 @@ use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use derive_builder::Builder;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use squalid::{regex, CowExt, NonEmpty, OptionExt};
+use squalid::{regex, CowExt, NonEmpty};
 use tree_sitter_lint::{
     rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
     QueryMatchContext, Rule,
 };
 
-use crate::{ast_helpers::get_is_type_literal, kind::NestedTypeIdentifier};
+use crate::ast_helpers::{get_is_type_literal, get_is_type_reference};
 
 #[derive(Builder, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[builder(default, setter(strip_option, into))]
@@ -174,7 +174,6 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
         state => {
             [per-config]
             banned_types: Types = {
-                println!("options: {options:#?}");
                 let mut types = if options.extend_defaults() {
                     DEFAULT_TYPES.clone()
                 } else {
@@ -224,7 +223,7 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
             r#"
               (type_identifier) @c
             "# => |node, context| {
-                if node.parent().matches(|parent| parent.kind() == NestedTypeIdentifier) {
+                if !get_is_type_reference(node) {
                     return;
                 }
 
