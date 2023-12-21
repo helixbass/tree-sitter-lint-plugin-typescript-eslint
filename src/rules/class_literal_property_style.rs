@@ -10,7 +10,9 @@ use tree_sitter_lint_plugin_eslint_builtin::{
         get_method_definition_kind, is_simple_template_literal, is_tagged_template_expression,
         MethodDefinitionKind,
     },
-    kind::{is_literal_kind, CallExpression, ReturnStatement, TemplateString},
+    kind::{
+        is_literal_kind, CallExpression, ComputedPropertyName, ReturnStatement, TemplateString,
+    },
 };
 
 use crate::kind::PublicFieldDefinition;
@@ -89,7 +91,7 @@ pub fn class_literal_property_style_rule() -> Arc<dyn Rule> {
                 };
 
                 context.report(violation! {
-                    node => node.field("name"),
+                    node => node.field("name").skip_nodes_of_type(ComputedPropertyName, SupportedLanguage::Javascript),
                     message_id => "prefer_field_style",
                     // TODO: suggestions?
                 });
@@ -112,7 +114,7 @@ pub fn class_literal_property_style_rule() -> Arc<dyn Rule> {
                 };
 
                 context.report(violation! {
-                    node => node.field("name"),
+                    node => node.field("name").skip_nodes_of_type(ComputedPropertyName, SupportedLanguage::Javascript),
                     message_id => "prefer_getter_style",
                 });
             }
@@ -186,7 +188,7 @@ mod tests {
                   r#"
                     class Mx {
                       get mySetting() {
-                        return `build-\${process.env.build}`;
+                        return `build-${process.env.build}`;
                       }
                     }
                   "#,
@@ -204,7 +206,7 @@ mod tests {
                   r#"
                     class Mx {
                       public readonly myButton = styled.button`
-                        color: \${props => (props.primary ? 'hotpink' : 'turquoise')};
+                        color: ${props => (props.primary ? 'hotpink' : 'turquoise')};
                       `;
                     }
                   "#,
@@ -213,17 +215,28 @@ mod tests {
                       class Mx {
                         public get myButton() {
                           return styled.button`
-                            color: \${props => (props.primary ? 'hotpink' : 'turquoise')};
+                            color: ${props => (props.primary ? 'hotpink' : 'turquoise')};
                           `;
                         }
                       }
                     "#,
                     options => "fields",
                   },
+                  // TODO: uncomment if
+                  // https://github.com/tree-sitter/tree-sitter-typescript/issues/270 gets
+                  // resolved?
+                  // {
+                  //   code => r#"
+              // class Mx {
+                // public declare readonly foo = 1;
+              // }
+                  //   "#,
+                  //   options => "getters",
+                  // },
                   {
                     code => r#"
               class Mx {
-                public declare readonly foo = 1;
+                declare public readonly foo = 1;
               }
                     "#,
                     options => "getters",
@@ -284,7 +297,7 @@ mod tests {
                     code => r#"
                       class Mx {
                         public readonly myButton = styled.button`
-                          color: \${props => (props.primary ? 'hotpink' : 'turquoise')};
+                          color: ${props => (props.primary ? 'hotpink' : 'turquoise')};
                         `;
                       }
                     "#,
@@ -295,7 +308,7 @@ mod tests {
                       class Mx {
                         public get myButton() {
                           return styled.button`
-                            color: \${props => (props.primary ? 'hotpink' : 'turquoise')};
+                            color: ${props => (props.primary ? 'hotpink' : 'turquoise')};
                           `;
                         }
                       }
