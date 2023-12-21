@@ -1,7 +1,19 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
-use tree_sitter_lint::{rule, violation, Rule};
+use tree_sitter_lint::{
+    rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt, Rule,
+};
+use tree_sitter_lint_plugin_eslint_builtin::{
+    assert_kind,
+    ast_helpers::{
+        get_method_definition_kind, is_simple_template_literal, is_tagged_template_expression,
+        MethodDefinitionKind,
+    },
+    kind::{is_literal_kind, CallExpression, ReturnStatement, TemplateString},
+};
+
+use crate::kind::PublicFieldDefinition;
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -9,6 +21,33 @@ enum Style {
     #[default]
     Fields,
     Getters,
+}
+
+fn is_supported_literal(node: Node) -> bool {
+    match node.kind() {
+        kind if is_literal_kind(kind) => true,
+        CallExpression if is_tagged_template_expression(node) => {
+            is_simple_template_literal(node.field("arguments"))
+        }
+        TemplateString => is_simple_template_literal(node),
+        _ => false,
+    }
+}
+
+fn is_readonly_and_not_declare(node: Node) -> bool {
+    assert_kind!(node, PublicFieldDefinition);
+
+    for (child, _) in node
+        .non_comment_children_and_field_names(SupportedLanguage::Javascript)
+        .take_while(|(_, field_name)| field_name != &Some("name"))
+    {
+        match child.kind() {
+            "declare" => return false,
+            "readonly" => return true,
+            _ => (),
+        }
+    }
+    false
 }
 
 pub fn class_literal_property_style_rule() -> Arc<dyn Rule> {
@@ -27,14 +66,56 @@ pub fn class_literal_property_style_rule() -> Arc<dyn Rule> {
             style: Style = options.unwrap_or_default(),
         },
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
+            r#"
+              (method_definition) @c
+            "# => |node, context| {
+                if self.style != Style::Fields {
+                    return;
+                }
+
+                if get_method_definition_kind(node, context) != MethodDefinitionKind::Get {
+                    return;
+                }
+                let Some(statement) = node.field("body").non_comment_named_children(SupportedLanguage::Javascript).next().filter(|statement| {
+                    statement.kind() == ReturnStatement
+                }) else {
+                    return;
+                };
+
+                let Some(_argument) = statement.maybe_first_non_comment_named_child(SupportedLanguage::Javascript).filter(|&argument| {
+                    is_supported_literal(argument)
+                }) else {
+                    return;
+                };
+
                 context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
+                    node => node.field("name"),
+                    message_id => "prefer_field_style",
+                    // TODO: suggestions?
                 });
             },
+            r#"
+              (public_field_definition) @c
+            "# => |node, context| {
+                if self.style != Style::Getters {
+                    return;
+                }
+
+                if !is_readonly_and_not_declare(node) {
+                    return;
+                }
+
+                let Some(_value) = node.child_by_field_name("value").filter(|&value| {
+                    is_supported_literal(value)
+                }) else {
+                    return;
+                };
+
+                context.report(violation! {
+                    node => node.field("name"),
+                    message_id => "prefer_getter_style",
+                });
+            }
         ],
     }
 }
@@ -233,12 +314,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 7,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // readonly p1 = 'hello world';
@@ -259,12 +340,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 7,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // readonly p1 = `hello world`;
@@ -285,12 +366,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 14,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // static readonly p1 = 'hello world';
@@ -311,12 +392,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 21,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public static readonly foo = 1;
@@ -337,12 +418,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 15,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public readonly [myValue] = 'a literal value';
@@ -363,12 +444,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 15,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public readonly [myValue] = 12345n;
@@ -387,12 +468,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 20,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public get [myValue]() { return 'a literal value'; }
@@ -412,12 +493,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 12,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // get p1() { return 'hello world'; }
@@ -437,12 +518,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 12,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // get p1() { return `hello world`; }
@@ -462,12 +543,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 19,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // static get p1() { return 'hello world'; }
@@ -489,12 +570,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 17,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // protected readonly p1 = 'hello world';
@@ -514,12 +595,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 22,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // protected get p1() { return 'hello world'; }
@@ -541,12 +622,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 21,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public static readonly p1 = 'hello world';
@@ -565,12 +646,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 26,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public static get p1() { return 'hello world'; }
@@ -599,12 +680,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferFieldStyle",
+                        message_id => "prefer_field_style",
                         column => 14,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferFieldStyleSuggestion",
+                        //     message_id => "prefer_field_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public readonly myValue = gql`
@@ -637,12 +718,12 @@ class Mx {
                     "#,
                     errors => [
                       {
-                        message_id => "preferGetterStyle",
+                        message_id => "prefer_getter_style",
                         column => 19,
                         line => 3,
                         // suggestions: [
                         //   {
-                        //     message_id => "preferGetterStyleSuggestion",
+                        //     message_id => "prefer_getter_styleSuggestion",
                         //     output: r#"
               // class Mx {
                 // public get myValue() { return gql`
