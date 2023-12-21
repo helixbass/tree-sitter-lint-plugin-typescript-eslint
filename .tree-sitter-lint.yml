@@ -623,6 +623,12 @@ rules:
         RuleTestExpectedErrorBuilder:
           module: tree_sitter_lint
           kind: type
+        RuleTestInvalid:
+          module: tree_sitter_lint
+          kind: type
+        RuleTestInvalidBuilder:
+          module: tree_sitter_lint
+          kind: type
         SkipOptionsBuilder:
           module: tree_sitter_lint
           kind: type
@@ -673,6 +679,9 @@ rules:
           trait: NodeExt
         tid:
           module: tree_sitter_lint::better_any
+          kind: macro
+        json:
+          module: tree_sitter_lint::serde_json
           kind: macro
         Node:
           module: tree_sitter_lint::tree_sitter
