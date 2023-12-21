@@ -3,10 +3,15 @@ use std::{borrow::Cow, collections::HashMap, sync::Arc};
 use derive_builder::Builder;
 use once_cell::sync::Lazy;
 use serde::Deserialize;
-use squalid::regex;
-use tree_sitter_lint::{rule, violation, Rule};
+use squalid::{regex, CowExt, NonEmpty, OptionExt};
+use tree_sitter_lint::{
+    rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
+    QueryMatchContext, Rule,
+};
 
-#[derive(Builder, Clone, Default, Deserialize)]
+use crate::{ast_helpers::get_is_type_literal, kind::NestedTypeIdentifier};
+
+#[derive(Builder, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[builder(default, setter(strip_option, into))]
 struct BanConfigObject {
     message: Option<String>,
@@ -14,7 +19,7 @@ struct BanConfigObject {
     suggest: Option<Vec<String>>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(untagged)]
 enum BanConfig {
     None,
@@ -129,7 +134,21 @@ fn remove_spaces(str_: &str) -> Cow<'_, str> {
     regex!(r#"\s"#).replace_all(str_, "")
 }
 
-#[derive(Default, Deserialize)]
+fn stringify_node<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> Cow<'a, str> {
+    node.text(context).map_cow(remove_spaces)
+}
+
+fn get_custom_message(banned_type: &BanConfig) -> String {
+    match banned_type {
+        BanConfig::String(banned_type) => format!(" {banned_type}"),
+        BanConfig::Object(banned_type) if banned_type.message.as_ref().non_empty().is_some() => {
+            format!(" {}", banned_type.message.as_ref().unwrap())
+        }
+        _ => "".to_owned(),
+    }
+}
+
+#[derive(Default, Debug, Deserialize)]
 #[serde(default)]
 struct Options {
     types: Option<Types>,
@@ -154,8 +173,8 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
         options_type => Options,
         state => {
             [per-config]
-            extend_defaults: bool = options.extend_defaults(),
             banned_types: Types = {
+                println!("options: {options:#?}");
                 let mut types = if options.extend_defaults() {
                     DEFAULT_TYPES.clone()
                 } else {
@@ -167,14 +186,84 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
                 types.into_iter().map(|(type_, data)| (remove_spaces(&type_).into_owned(), data)).collect()
             },
         },
-        listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
+        methods => {
+            fn check_banned_types(&self, type_node: Node<'a>, context: &QueryMatchContext<'a, '_>) {
+                let name = stringify_node(type_node, context);
+                let Some(banned_type) = self.banned_types.get(&*name).filter(|&banned_type| {
+                    *banned_type != BanConfig::Bool(false)
+                }) else {
+                    return;
+                };
+
+                let custom_message = get_custom_message(banned_type);
+                let fix_with = match banned_type {
+                    BanConfig::Object(banned_type) => banned_type.fix_with.as_ref(),
+                    _ => None
+                };
+
                 context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
+                    node => type_node,
+                    message_id => "banned_type_message",
+                    data => {
+                        name => name,
+                        custom_message => custom_message,
+                    },
+                    fix => |fixer| {
+                        let Some(fix_with) = fix_with else {
+                            return;
+                        };
+                        fixer.replace_text(
+                            type_node,
+                            fix_with
+                        );
+                    },
                 });
+            }
+        },
+        listeners => [
+            r#"
+              (type_identifier) @c
+            "# => |node, context| {
+                if node.parent().matches(|parent| parent.kind() == NestedTypeIdentifier) {
+                    return;
+                }
+
+                self.check_banned_types(node, context);
+            },
+            r#"
+              (predefined_type) @c
+              (literal_type
+                (undefined) @c
+              )
+              (literal_type
+                (null) @c
+              )
+              (generic_type) @c
+              (nested_type_identifier) @c
+            "# => |node, context| {
+                self.check_banned_types(node, context);
+            },
+            r#"
+              (tuple_type) @c
+            "# => |node, context| {
+                if node.non_comment_named_children(SupportedLanguage::Javascript).next().is_some() {
+                    return;
+                }
+
+                self.check_banned_types(node, context);
+            },
+            r#"
+              (object_type) @c
+            "# => |node, context| {
+                if !get_is_type_literal(node) {
+                    return;
+                }
+
+                if node.non_comment_named_children(SupportedLanguage::Javascript).next().is_some() {
+                    return;
+                }
+
+                self.check_banned_types(node, context);
             },
         ],
     }
@@ -195,14 +284,14 @@ mod tests {
             "types": {
               "String": {
                 "message": "Use string instead.",
-                "fixWith": "string",
+                "fix_with": "string",
               },
               "Object": "Use '{}' instead.",
               "Array": null,
               "F": null,
               "NS.Bad": {
                 "message": "Use NS.Good instead.",
-                "fixWith": "NS.Good",
+                "fix_with": "NS.Good",
               },
             },
             "extend_defaults": false,
@@ -240,7 +329,7 @@ mod tests {
                   // Replace default options instead of merging with extend_defaults => false
                   {
                     code => "let a: String;",
-                    options => [
+                    options =>
                       {
                         types => {
                           Number => {
@@ -250,11 +339,10 @@ mod tests {
                         },
                         extend_defaults => false,
                       },
-                    ],
                   },
                   {
                     code => "let a: undefined;",
-                    options => [
+                    options =>
                       {
                         types => {
                           null => {
@@ -263,29 +351,26 @@ mod tests {
                           },
                         },
                       },
-                    ],
                   },
                   {
                     code => "let a: null;",
-                    options => [
+                    options =>
                       {
                         types => {
                           undefined => null,
                         },
                         extend_defaults => false,
                       },
-                    ],
                   },
                   {
                     code => "type Props = {};",
-                    options => [
+                    options =>
                       {
                         types => {
                           "{}" => false,
                         },
                         extend_defaults => true,
                       },
-                    ],
                   },
                   "let a: [];",
                 ],
@@ -351,7 +436,7 @@ mod tests {
                         // ],
                       },
                     ],
-                    options => [{}],
+                    options => {},
                   },
                   {
                     code => "let aa: Foo;",
@@ -364,13 +449,12 @@ mod tests {
                         },
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Foo => { message => "" },
                         },
                       },
-                    ],
                   },
                   {
                     code => "let b: { c: String };",
@@ -583,7 +667,7 @@ let b: Foo<NS.Good>;
                   {
                     code => "let foo: {} = {};",
                     output => "let foo: object = {};",
-                    options => [
+                    options =>
                       {
                         types => {
                           "{}" => {
@@ -592,7 +676,6 @@ let b: Foo<NS.Good>;
                           },
                         },
                       },
-                    ],
                     errors => [
                       {
                         message_id => "banned_type_message",
@@ -617,7 +700,7 @@ let foo: object = {};
 let bar: object = {};
 let baz: object = {};
                     "#,
-                    options => [
+                    options =>
                       {
                         types => {
                           "{   }" => {
@@ -626,7 +709,6 @@ let baz: object = {};
                           },
                         },
                       },
-                    ],
                     errors => [
                       {
                         message_id => "banned_type_message",
@@ -671,7 +753,7 @@ let baz: object = {};
                         column => 8,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "  NS.Bad  " => {
@@ -680,7 +762,6 @@ let baz: object = {};
                           },
                         },
                       },
-                    ],
                   },
                   {
                     code => r#"let a: Foo<   F   >;"#,
@@ -696,7 +777,7 @@ let baz: object = {};
                         column => 15,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "       F      " => {
@@ -705,7 +786,6 @@ let baz: object = {};
                           },
                         },
                       },
-                    ],
                   },
                   {
                     code => "type Foo = Bar<any>;",
@@ -720,13 +800,12 @@ let baz: object = {};
                         column => 12,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "Bar<any>" => "Don't use `any` as a type parameter to `Bar`",
                         },
                       },
-                    ],
                   },
                   {
                     code => r#"type Foo = Bar<A,B>;"#,
@@ -741,13 +820,12 @@ let baz: object = {};
                         column => 12,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "Bar<A, B>" => "Don't pass `A, B` as parameters to `Bar`",
                         },
                       },
-                    ],
                   },
                   {
                     code => "let a: [];",
@@ -762,13 +840,12 @@ let baz: object = {};
                         column => 8,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "[]" => "`[]` does only allow empty arrays.",
                         },
                       },
-                    ],
                   },
                   {
                     code => r#"let a:  [ ] ;"#,
@@ -783,13 +860,12 @@ let baz: object = {};
                         column => 9,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "[]" => "`[]` does only allow empty arrays.",
                         },
                       },
-                    ],
                   },
                   {
                     code => "let a: [];",
@@ -805,7 +881,7 @@ let baz: object = {};
                         column => 8,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "[]" => {
@@ -814,7 +890,6 @@ let baz: object = {};
                           },
                         },
                       },
-                    ],
                   },
                   {
                     code => "let a: [[]];",
@@ -829,13 +904,12 @@ let baz: object = {};
                         column => 9,
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           "[]" => "`[]` does only allow empty arrays.",
                         },
                       },
-                    ],
                   },
                   {
                     code => "type Baz = 1 & Foo;",
@@ -844,13 +918,12 @@ let baz: object = {};
                         message_id => "banned_type_message",
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Foo => { message => "" },
                         },
                       },
-                    ],
                   },
                   {
                     code => "interface Foo extends Bar {}",
@@ -859,13 +932,12 @@ let baz: object = {};
                         message_id => "banned_type_message",
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Bar => { message => "" },
                         },
                       },
-                    ],
                   },
                   {
                     code => "interface Foo extends Bar, Baz {}",
@@ -874,13 +946,12 @@ let baz: object = {};
                         message_id => "banned_type_message",
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Bar => { message => "" },
                         },
                       },
-                    ],
                   },
                   {
                     code => "class Foo implements Bar {}",
@@ -889,13 +960,12 @@ let baz: object = {};
                         message_id => "banned_type_message",
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Bar => { message => "" },
                         },
                       },
-                    ],
                   },
                   {
                     code => "class Foo implements Bar, Baz {}",
@@ -904,13 +974,12 @@ let baz: object = {};
                         message_id => "banned_type_message",
                       },
                     ],
-                    options => [
+                    options =>
                       {
                         types => {
                           Bar => { message => "Bla" },
                         },
                       },
-                    ],
                   },
                   ...[
                       "bigint",
