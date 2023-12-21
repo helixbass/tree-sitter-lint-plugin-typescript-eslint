@@ -1,9 +1,13 @@
+use squalid::OptionExt;
 use tree_sitter_lint::{tree_sitter::Node, tree_sitter_grep::SupportedLanguage, NodeExt};
 use tree_sitter_lint_plugin_eslint_builtin::{
     assert_kind, ast_helpers::skip_nodes_of_type, kind::MethodDefinition,
 };
 
-use crate::kind::{MethodSignature, ParenthesizedType};
+use crate::kind::{
+    InterfaceDeclaration, MethodSignature, NestedTypeIdentifier, ObjectType, ParenthesizedType,
+    TypeIdentifier, TypeParameter,
+};
 
 pub fn get_is_member_static(node: Node) -> bool {
     assert_kind!(node, MethodDefinition | MethodSignature);
@@ -20,4 +24,22 @@ impl<'a> NodeExtTypescript<'a> for Node<'a> {
     fn skip_parenthesized_types(&self) -> Node<'a> {
         skip_nodes_of_type(*self, ParenthesizedType)
     }
+}
+
+pub fn get_is_type_literal(node: Node) -> bool {
+    node.kind() == ObjectType
+        && !node
+            .parent()
+            .matches(|parent| parent.kind() == InterfaceDeclaration && parent.field("body") == node)
+}
+
+pub fn get_is_type_reference(node: Node) -> bool {
+    assert_kind!(node, TypeIdentifier);
+    if node
+        .parent()
+        .matches(|parent| matches!(parent.kind(), NestedTypeIdentifier | TypeParameter))
+    {
+        return false;
+    }
+    true
 }

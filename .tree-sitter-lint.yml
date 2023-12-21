@@ -16,6 +16,12 @@ rules:
         get_is_method_signature_static:
           module: crate::ast_helpers
           kind: function
+        get_is_type_literal:
+          module: crate::ast_helpers
+          kind: function
+        get_is_type_reference:
+          module: crate::ast_helpers
+          kind: function
         skip_parenthesized_types:
           module: crate::ast_helpers
           kind: trait_method
@@ -623,6 +629,12 @@ rules:
         RuleTestExpectedErrorBuilder:
           module: tree_sitter_lint
           kind: type
+        RuleTestInvalid:
+          module: tree_sitter_lint
+          kind: type
+        RuleTestInvalidBuilder:
+          module: tree_sitter_lint
+          kind: type
         SkipOptionsBuilder:
           module: tree_sitter_lint
           kind: type
@@ -673,6 +685,9 @@ rules:
           trait: NodeExt
         tid:
           module: tree_sitter_lint::better_any
+          kind: macro
+        json:
+          module: tree_sitter_lint::serde_json
           kind: macro
         Node:
           module: tree_sitter_lint::tree_sitter
@@ -806,6 +821,9 @@ rules:
           kind: type
         Wtf16:
           module: regexpp_js
+          kind: type
+        Builder:
+          module: derive_builder
           kind: type
         iter:
           module: std
