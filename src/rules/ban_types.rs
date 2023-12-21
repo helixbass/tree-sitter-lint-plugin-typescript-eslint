@@ -131,9 +131,7 @@ static DEFAULT_TYPES: Lazy<Types> = Lazy::new(|| {
 });
 
 fn remove_spaces(str_: &str) -> Cow<'_, str> {
-    let ret = regex!(r#"\s"#).replace_all(str_, "");
-    println!("remove_spaces() input: {str_:#?}, ret: {ret:#?}");
-    ret
+    regex!(r#"\s"#).replace_all(str_, "")
 }
 
 fn stringify_node<'a>(node: Node<'a>, context: &QueryMatchContext<'a, '_>) -> Cow<'a, str> {
@@ -182,11 +180,9 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
                     Default::default()
                 };
                 if let Some(options_types) = options.types.as_ref() {
-                    types.extend(options_types.clone());
+                    types.extend(options_types.into_iter().map(|(type_, data)| (remove_spaces(type_).into_owned(), data.clone())));
                 }
-                let ret = types.into_iter().map(|(type_, data)| (remove_spaces(&type_).into_owned(), data)).collect();
-                println!("options: {options:#?}, banned_types: {ret:#?}");
-                ret
+                types
             },
         },
         methods => {
