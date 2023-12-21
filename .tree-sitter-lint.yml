@@ -807,6 +807,9 @@ rules:
         Wtf16:
           module: regexpp_js
           kind: type
+        Builder:
+          module: derive_builder
+          kind: type
         iter:
           module: std
           kind: module
