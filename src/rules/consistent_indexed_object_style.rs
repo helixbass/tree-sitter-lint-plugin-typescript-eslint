@@ -1,7 +1,16 @@
 use std::sync::Arc;
 
+use itertools::Itertools;
 use serde::Deserialize;
-use tree_sitter_lint::{rule, violation, Rule};
+use tree_sitter_lint::{
+    rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt,
+    QueryMatchContext, Rule,
+};
+
+use crate::{
+    ast_helpers::get_is_type_literal,
+    kind::{TypeAliasDeclaration, TypeAnnotation},
+};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -11,10 +20,42 @@ enum Options {
     IndexSignature,
 }
 
+fn find_parent_declaration(node: Node) -> Option<Node> {
+    let node_parent = node
+        .parent()
+        .filter(|parent| parent.kind() != TypeAnnotation)?;
+    if node_parent.kind() == TypeAliasDeclaration {
+        return Some(node_parent);
+    }
+    find_parent_declaration(node_parent)
+}
+
+fn check_members<'a>(
+    mut members: impl Iterator<Item = Node<'a>>,
+    node: Node,
+    parent_id: Option<Node>,
+    prefix: &str,
+    postfix: &str,
+    safe_fix: Option<bool>,
+    context: &QueryMatchContext,
+) {
+    let Some(member) = members.next() else {
+        return;
+    };
+    if members.next().is_some() {
+        return;
+    }
+
+    let key_type = member.field("index_type");
+
+    let value_type = member.field("type");
+    unimplemented!()
+}
+
 pub fn consistent_indexed_object_style_rule() -> Arc<dyn Rule> {
     rule! {
         name => "no-debugger",
-        languages => [Javascript],
+        languages => [Typescript],
         messages => [
             prefer_record => "A record is preferred over an index signature.",
             prefer_index_signature => "An index signature is preferred over a record.",
@@ -27,13 +68,58 @@ pub fn consistent_indexed_object_style_rule() -> Arc<dyn Rule> {
         },
         listeners => [
             r#"
-              (debugger_statement) @c
-            "# => |node, context| {
+              (generic_type
+                name: (type_identifier) @record (#eq? @record "Record")
+              ) @generic_type
+            "# => |captures, context| {
+                if self.mode != Options::IndexSignature {
+                    return;
+                }
+
+                let node = captures["generic_type"];
+                let type_arguments = node.field("type_arguments");
+                if type_arguments.num_non_comment_named_children(SupportedLanguage::Javascript) != 2 {
+                    return;
+                }
+
+                let params = type_arguments.non_comment_named_children(SupportedLanguage::Javascript).collect_vec();
+
                 context.report(violation! {
                     node => node,
-                    message_id => "unexpected",
+                    message_id => "prefer_index_signature",
+                    fix => |fixer| {
+                        let key = params[0].text(context);
+                        let type_ = params[1].text(context);
+                        fixer.replace_text(
+                            node,
+                            format!("{{ [key: {key}]: {type_} }}")
+                        );
+                    }
                 });
             },
+            r#"
+              (object_type
+                (index_signature
+                  name: (identifier)
+                  type: (type_annotation)
+                )
+              ) @c
+            "# => |node, context| {
+                if !get_is_type_literal(node) {
+                    return;
+                }
+
+                let parent = find_parent_declaration(node);
+                check_members(
+                    node.non_comment_named_children(SupportedLanguage::Javascript),
+                    node,
+                    parent.map(|parent| parent.field("name")),
+                    "",
+                    "",
+                    None,
+                    context,
+                );
+            }
         ],
     }
 }

@@ -7,9 +7,10 @@ use tree_sitter_lint_plugin_eslint_builtin::{
 };
 
 use crate::kind::{
-    AbstractMethodSignature, AccessibilityModifier, ImplementsClause, InterfaceDeclaration,
-    MethodSignature, NestedTypeIdentifier, ObjectType, OverrideModifier, ParenthesizedType,
-    PropertySignature, PublicFieldDefinition, TypeIdentifier, TypeParameter,
+    AbstractMethodSignature, AccessibilityModifier, ImplementsClause, IndexSignature,
+    InterfaceDeclaration, MappedTypeClause, MethodSignature, NestedTypeIdentifier, ObjectType,
+    OverrideModifier, ParenthesizedType, PropertySignature, PublicFieldDefinition, TypeIdentifier,
+    TypeParameter,
 };
 
 pub fn get_is_member_static(node: Node) -> bool {
@@ -86,4 +87,15 @@ pub fn get_accessibility_modifier(node: Node) -> Option<Node> {
     node.non_comment_named_children_and_field_names(SupportedLanguage::Javascript)
         .take_while(|(_, field_name)| *field_name != Some("name"))
         .find_map(|(node, _)| (node.kind() == AccessibilityModifier).then_some(node))
+}
+
+pub fn get_is_index_signature(node: Node) -> bool {
+    if node.kind() != IndexSignature {
+        return false;
+    }
+
+    !node
+        .non_comment_children(SupportedLanguage::Javascript)
+        .take_while(|child| child.kind() != "]")
+        .any(|node| node.kind() == MappedTypeClause)
 }
