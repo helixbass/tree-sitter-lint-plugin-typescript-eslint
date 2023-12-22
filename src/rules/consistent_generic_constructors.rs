@@ -1,7 +1,14 @@
 use std::sync::Arc;
 
+use indexmap::IndexSet;
 use serde::Deserialize;
-use tree_sitter_lint::{rule, violation, Rule};
+use squalid::EverythingExt;
+use tree_sitter_lint::{
+    rule, tree_sitter::Node, tree_sitter_grep::SupportedLanguage, violation, NodeExt, Rule,
+};
+use tree_sitter_lint_plugin_eslint_builtin::kind::{Identifier, NewExpression, VariableDeclarator};
+
+use crate::kind::{GenericType, PublicFieldDefinition, TypeIdentifier};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -20,19 +27,110 @@ pub fn consistent_generic_constructors_rule() -> Arc<dyn Rule> {
             prefer_constructor => "The generic type arguments should be specified as part of the constructor type arguments.",
         ],
         fixable => true,
+        concatenate_adjacent_insert_fixes => true,
         options_type => Options,
         state => {
             [per-config]
             mode: Options = options,
         },
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
-                context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
-                });
+            r#"
+              (variable_declarator) @c
+              (public_field_definition) @c
+            "# => |node, context| {
+                let (lhs_name, lhs, rhs) = match node.kind() {
+                    VariableDeclarator | PublicFieldDefinition => (
+                        node.field("name"),
+                        node.child_by_field_name("type").map(|type_| type_.first_non_comment_named_child(SupportedLanguage::Javascript)),
+                        node.child_by_field_name("value")
+                    ),
+                    _ => unreachable!()
+                };
+                // println!("listener 1 lhs_name: {lhs_name:#?}, lhs: {lhs:#?}, rhs: {rhs:#?}");
+                let Some(rhs) = rhs.filter(|&rhs| {
+                    rhs.kind() == NewExpression &&
+                        rhs.field("constructor").kind() == Identifier
+                }) else {
+                    return;
+                };
+                // println!("listener 2 mode: {:#?}", mode);
+
+                match self.mode {
+                    Options::TypeAnnotation => {
+                        if lhs.is_some() {
+                            return;
+                        }
+                        let Some(type_arguments) = rhs.child_by_field_name("type_arguments") else {
+                            return;
+                        };
+                        let callee = rhs.field("constructor");
+                        let type_annotation = format!(
+                            "{}{}",
+                            callee.text(context),
+                            type_arguments.text(context),
+                        );
+                        context.report(violation! {
+                            node => node,
+                            message_id => "prefer_type_annotation",
+                            fix => |fixer| {
+                                let id_to_attach_annotation = match node.kind() {
+                                    PublicFieldDefinition => node.field("name"),
+                                    _ => lhs_name
+                                };
+                                fixer.remove(type_arguments);
+                                fixer.insert_text_after(
+                                    id_to_attach_annotation,
+                                    format!(": {type_annotation}")
+                                );
+                            }
+                        });
+                    }
+                    Options::Constructor => {
+                        if rhs.child_by_field_name("type_arguments").is_some() {
+                            return;
+                        }
+                        let Some(lhs_type_arguments) = lhs.filter(|&lhs| {
+                            lhs.kind() == GenericType &&
+                                lhs.field("name").thrush(|lhs_name| {
+                                    lhs_name.kind() == TypeIdentifier &&
+                                        lhs_name.text(context) == rhs.field("constructor").text(context)
+                                })
+                        }).map(|lhs| lhs.field("type_arguments")) else {
+                            return;
+                        };
+                        let lhs = lhs.unwrap();
+                        let has_parens = rhs.child_by_field_name("arguments").is_some();
+                        let mut extra_comments: IndexSet<Node<'a>> = context
+                            .get_comments_inside(lhs.parent().unwrap())
+                            .collect();
+                        context.get_comments_inside(lhs_type_arguments).for_each(|c| {
+                            extra_comments.remove(&c);
+                        });
+                        context.report(violation! {
+                            node => node,
+                            message_id => "prefer_constructor",
+                            fix => |fixer| {
+                                fixer.remove(lhs.parent().unwrap());
+                                for &comment in &extra_comments {
+                                    fixer.insert_text_after(
+                                        rhs.field("constructor"),
+                                        comment.text(context)
+                                    );
+                                }
+                                fixer.insert_text_after(
+                                    rhs.field("constructor"),
+                                    lhs_type_arguments.text(context),
+                                );
+                                if !has_parens {
+                                    fixer.insert_text_after(
+                                        rhs.field("constructor"),
+                                        "()"
+                                    );
+                                }
+                            }
+                        });
+                    }
+                }
             },
         ],
     }
@@ -183,7 +281,7 @@ mod tests {
                     code => "const a: Foo<string> = new Foo();",
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => "const a = new Foo<string>();",
@@ -192,7 +290,7 @@ mod tests {
                     code => "const a: Map<string, number> = new Map();",
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => "const a = new Map<string, number>();",
@@ -201,7 +299,7 @@ mod tests {
                     code => r#"const a: Map <string, number> = new Map();"#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Map<string, number>();"#,
@@ -210,7 +308,7 @@ mod tests {
                     code => r#"const a: Map< string, number > = new Map();"#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Map< string, number >();"#,
@@ -219,7 +317,7 @@ mod tests {
                     code => r#"const a: Map<string, number> = new Map ();"#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Map<string, number> ();"#,
@@ -228,7 +326,7 @@ mod tests {
                     code => r#"const a: Foo<number> = new Foo;"#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Foo<number>();"#,
@@ -237,7 +335,7 @@ mod tests {
                     code => "const a: /* comment */ Foo/* another */ <string> = new Foo();",
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Foo/* comment *//* another */<string>();"#,
@@ -246,7 +344,7 @@ mod tests {
                     code => "const a: Foo/* comment */ <string> = new Foo /* another */();",
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new Foo/* comment */<string> /* another */();"#,
@@ -255,7 +353,7 @@ mod tests {
                     code => r#"const a: Foo<string> = new \n Foo \n ();"#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"const a = new \n Foo<string> \n ();"#,
@@ -268,7 +366,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -285,7 +383,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -300,7 +398,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -313,7 +411,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -326,7 +424,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -341,7 +439,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"
@@ -356,7 +454,7 @@ mod tests {
                     "#,
                     errors => [
                       {
-                        message_id => "preferConstructor",
+                        message_id => "prefer_constructor",
                       },
                     ],
                     output => r#"

@@ -846,6 +846,9 @@ rules:
         Builder:
           module: derive_builder
           kind: type
+        IndexSet:
+          module: indexmap
+          kind: type
         iter:
           module: std
           kind: module
