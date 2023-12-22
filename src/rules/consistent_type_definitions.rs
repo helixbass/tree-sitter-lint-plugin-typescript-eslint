@@ -2,7 +2,14 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 use tree_sitter_lint::{
-    range_between_end_and_start, rule, tree_sitter::Node, violation, NodeExt, Rule,
+    range_between_end_and_start, range_between_starts, rule, tree_sitter::Node,
+    tree_sitter_grep::SupportedLanguage, violation, NodeExt, Rule,
+};
+use tree_sitter_lint_plugin_eslint_builtin::ast_helpers::is_export_default;
+
+use crate::{
+    ast_helpers::{get_is_global_ambient_declaration, get_is_type_literal},
+    kind::ExtendsTypeClause,
 };
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -11,6 +18,10 @@ enum Options {
     #[default]
     Interface,
     Type,
+}
+
+fn is_currently_traversed_node_within_module_declaration(node: Node) -> bool {
+    node.ancestors().any(get_is_global_ambient_declaration)
 }
 
 pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
@@ -22,6 +33,7 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
             type_over_interface => "Use a `type` instead of an `interface`.",
         ],
         fixable => true,
+        concatenate_adjacent_insert_fixes => true,
         options_type => Options,
         state => {
             [per-config]
@@ -37,13 +49,20 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
                     return;
                 }
 
+                if !get_is_type_literal(node.field("value")) {
+                    return;
+                }
+
                 context.report(violation! {
                     node => node.field("name"),
                     message_id => "interface_over_type",
                     fix => |fixer| {
                         let type_node = node.child_by_field_name("type_parameters").unwrap_or_else(|| node.field("name"));
 
-                        let first_token = context.maybe_get_token_before(node.field("name"), Option::<fn(Node) -> bool>::None);
+                        let first_token = context.maybe_get_token_before(
+                            node.field("name"),
+                            Option::<fn(Node) -> bool>::None
+                        );
                         if let Some(first_token) = first_token {
                             fixer.replace_text(first_token, "interface");
                             fixer.replace_text_range(
@@ -55,7 +74,10 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
                             );
                         }
 
-                        let after_token = context.maybe_get_token_after(node.field("value"), Option::<fn(Node) -> bool>::None);
+                        let after_token = context.maybe_get_token_after(
+                            node.field("value"),
+                            Option::<fn(Node) -> bool>::None
+                        );
                         if let Some(after_token) = after_token.filter(|after_token| {
                             after_token.kind() == ";"
                         }) {
@@ -64,6 +86,59 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
                     }
                 });
             },
+            r#"
+              (interface_declaration) @c
+            "# => |node, context| {
+                if self.option != Options::Type {
+                    return;
+                }
+
+                context.report(violation! {
+                    node => node.field("name"),
+                    message_id => "type_over_interface",
+                    fix => |fixer| {
+                        if is_currently_traversed_node_within_module_declaration(node) {
+                            return;
+                        }
+
+                        let type_node = node.child_by_field_name("type_parameters").unwrap_or_else(|| node.field("name"));
+                        let first_token = context.maybe_get_token_before(
+                            node.field("name"),
+                            Option::<fn(Node) -> bool>::None
+                        );
+                        if let Some(first_token) = first_token {
+                            fixer.replace_text(first_token, "type");
+                            fixer.replace_text_range(
+                                range_between_end_and_start(
+                                    type_node.range(),
+                                    node.field("body").range()
+                                ),
+                                " = "
+                            );
+                        }
+
+                        if let Some(extends) = node.maybe_first_child_of_kind(ExtendsTypeClause) {
+                            for heritage in extends.non_comment_named_children(SupportedLanguage::Javascript) {
+                                let type_identifier = heritage.text(context);
+                                fixer.insert_text_after(
+                                    node.field("body"),
+                                    format!(" & {type_identifier}")
+                                );
+                            }
+                        }
+
+                        if is_export_default(node.parent().unwrap()) {
+                            fixer.remove_range(
+                                range_between_starts(node.parent().unwrap().range(), node.range()),
+                            );
+                            fixer.insert_text_after(
+                                node.field("body"),
+                                format!("\nexport default {}", node.field("name").text(context))
+                            );
+                        }
+                    }
+                });
+            }
         ],
     }
 }
