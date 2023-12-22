@@ -15,6 +15,7 @@ use rules::{
     adjacent_overload_signatures_rule, array_type_rule, ban_ts_comment_rule,
     ban_tslint_comment_rule, ban_types_rule, class_literal_property_style_rule,
     class_methods_use_this_rule, consistent_generic_constructors_rule,
+    consistent_indexed_object_style_rule,
 };
 
 pub type ProvidedTypes<'a> = ();
@@ -31,6 +32,7 @@ pub fn instantiate() -> Plugin {
             class_literal_property_style_rule(),
             class_methods_use_this_rule(),
             consistent_generic_constructors_rule(),
+            consistent_indexed_object_style_rule(),
         ],
     }
 }
