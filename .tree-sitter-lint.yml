@@ -626,6 +626,9 @@ rules:
         YieldExpression:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static
+        range_between_end_and_start:
+          module: tree_sitter_lint
+          kind: function
         range_between_ends:
           module: tree_sitter_lint
           kind: function

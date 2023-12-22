@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
-use tree_sitter_lint::{rule, violation, Rule};
+use tree_sitter_lint::{
+    range_between_end_and_start, rule, tree_sitter::Node, violation, NodeExt, Rule,
+};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,12 +28,40 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
             option: Options = options,
         },
         listeners => [
-            r#"(
-              (debugger_statement) @c
-            )"# => |node, context| {
+            r#"
+              (type_alias_declaration
+                value: (object_type)
+              ) @c
+            "# => |node, context| {
+                if self.option != Options::Interface {
+                    return;
+                }
+
                 context.report(violation! {
-                    node => node,
-                    message_id => "unexpected",
+                    node => node.field("name"),
+                    message_id => "interface_over_type",
+                    fix => |fixer| {
+                        let type_node = node.child_by_field_name("type_parameters").unwrap_or_else(|| node.field("name"));
+
+                        let first_token = context.maybe_get_token_before(node.field("name"), Option::<fn(Node) -> bool>::None);
+                        if let Some(first_token) = first_token {
+                            fixer.replace_text(first_token, "interface");
+                            fixer.replace_text_range(
+                                range_between_end_and_start(
+                                    type_node.range(),
+                                    node.field("value").range()
+                                ),
+                                " "
+                            );
+                        }
+
+                        let after_token = context.maybe_get_token_after(node.field("value"), Option::<fn(Node) -> bool>::None);
+                        if let Some(after_token) = after_token.filter(|after_token| {
+                            after_token.kind() == ";"
+                        }) {
+                            fixer.remove(after_token);
+                        }
+                    }
                 });
             },
         ],
