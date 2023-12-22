@@ -8,7 +8,9 @@ use tree_sitter_lint::{
 };
 use tree_sitter_lint_plugin_eslint_builtin::kind::{Identifier, NewExpression, VariableDeclarator};
 
-use crate::kind::{GenericType, PublicFieldDefinition, TypeIdentifier};
+use crate::kind::{
+    GenericType, OptionalParameter, PublicFieldDefinition, RequiredParameter, TypeIdentifier,
+};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -37,6 +39,12 @@ pub fn consistent_generic_constructors_rule() -> Arc<dyn Rule> {
             r#"
               (variable_declarator) @c
               (public_field_definition) @c
+              (required_parameter
+                value: (_)
+              ) @c
+              (optional_parameter
+                value: (_)
+              ) @c
             "# => |node, context| {
                 let (lhs_name, lhs, rhs) = match node.kind() {
                     VariableDeclarator | PublicFieldDefinition => (
@@ -44,16 +52,19 @@ pub fn consistent_generic_constructors_rule() -> Arc<dyn Rule> {
                         node.child_by_field_name("type").map(|type_| type_.first_non_comment_named_child(SupportedLanguage::Javascript)),
                         node.child_by_field_name("value")
                     ),
+                    RequiredParameter | OptionalParameter => (
+                        node.field("pattern"),
+                        node.child_by_field_name("type").map(|type_| type_.first_non_comment_named_child(SupportedLanguage::Javascript)),
+                        node.child_by_field_name("value")
+                    ),
                     _ => unreachable!()
                 };
-                // println!("listener 1 lhs_name: {lhs_name:#?}, lhs: {lhs:#?}, rhs: {rhs:#?}");
                 let Some(rhs) = rhs.filter(|&rhs| {
                     rhs.kind() == NewExpression &&
                         rhs.field("constructor").kind() == Identifier
                 }) else {
                     return;
                 };
-                // println!("listener 2 mode: {:#?}", mode);
 
                 match self.mode {
                     Options::TypeAnnotation => {
@@ -350,13 +361,13 @@ mod tests {
                     output => r#"const a = new Foo/* comment */<string> /* another */();"#,
                   },
                   {
-                    code => r#"const a: Foo<string> = new \n Foo \n ();"#,
+                    code => "const a: Foo<string> = new \n Foo \n ();",
                     errors => [
                       {
                         message_id => "prefer_constructor",
                       },
                     ],
-                    output => r#"const a = new \n Foo<string> \n ();"#,
+                    output => "const a = new \n Foo<string> \n ();",
                   },
                   {
                     code => r#"
