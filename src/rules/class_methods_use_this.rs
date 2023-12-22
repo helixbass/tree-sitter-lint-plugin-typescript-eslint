@@ -14,7 +14,7 @@ use tree_sitter_lint_plugin_eslint_builtin::{
 
 use crate::{
     ast_helpers::{
-        get_accessibility_modifier, get_class_has_implements_clause, get_has_override_modifier,
+        get_accessibility_modifier, class_has_implements_clause, has_override_modifier,
     },
     kind::PublicFieldDefinition,
 };
@@ -159,12 +159,12 @@ pub fn class_methods_use_this_rule() -> Arc<dyn Rule> {
                 let stack_context = self.pop_context();
                 let Some(stack_context_member) = stack_context.member.filter(|&stack_context_member| {
                     !(stack_context.uses_this ||
-                        self.ignore_override_methods && get_has_override_modifier(stack_context_member) ||
+                        self.ignore_override_methods && has_override_modifier(stack_context_member) ||
                         match self.ignore_classes_that_implement_an_interface {
                             IgnoreClassesThatImplementAnInterface::Bool(true) =>
-                                get_class_has_implements_clause(stack_context.class.unwrap()),
+                                class_has_implements_clause(stack_context.class.unwrap()),
                             IgnoreClassesThatImplementAnInterface::PublicFields(_) =>
-                                get_class_has_implements_clause(stack_context.class.unwrap()) &&
+                                class_has_implements_clause(stack_context.class.unwrap()) &&
                                     is_public_field(stack_context_member, context),
                             _ => false,
                         })

@@ -10,7 +10,7 @@ use tree_sitter_lint_plugin_eslint_builtin::kind::{
 };
 
 use crate::{
-    ast_helpers::get_is_member_static,
+    ast_helpers::is_member_static,
     kind::{
         AmbientDeclaration, CallSignature, ConstructSignature, FunctionSignature, MethodSignature,
         ObjectType,
@@ -48,7 +48,7 @@ fn get_member_method<'a>(
             Some(Method {
                 name,
                 type_,
-                static_: get_is_member_static(member),
+                static_: is_member_static(member),
                 call_signature: false,
             })
         }

@@ -8,7 +8,7 @@ use tree_sitter_lint::{
 use tree_sitter_lint_plugin_eslint_builtin::ast_helpers::is_export_default;
 
 use crate::{
-    ast_helpers::{get_is_global_ambient_declaration, get_is_type_literal},
+    ast_helpers::{is_global_ambient_declaration, is_type_literal},
     kind::ExtendsTypeClause,
 };
 
@@ -21,7 +21,7 @@ enum Options {
 }
 
 fn is_currently_traversed_node_within_module_declaration(node: Node) -> bool {
-    node.ancestors().any(get_is_global_ambient_declaration)
+    node.ancestors().any(is_global_ambient_declaration)
 }
 
 pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
@@ -49,7 +49,7 @@ pub fn consistent_type_definitions_rule() -> Arc<dyn Rule> {
                     return;
                 }
 
-                if !get_is_type_literal(node.field("value")) {
+                if !is_type_literal(node.field("value")) {
                     return;
                 }
 
