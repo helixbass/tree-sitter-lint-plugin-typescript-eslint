@@ -12,8 +12,7 @@ regex = "1.10.2"
 serde = "1.0.193"
 squalid = { git = "https://github.com/helixbass/squalid", rev = "7f1af35" }
 tree-sitter-lint = { git = "https://github.com/helixbass/tree-sitter-lint", rev = "e8f0f07" }
-# tree-sitter-lint-plugin-eslint-builtin = { git = "https://github.com/helixbass/tree-sitter-lint-plugin-eslint-builtin", rev = "b0d340d" }
-tree-sitter-lint-plugin-eslint-builtin = { path = "../tree-sitter-lint-plugin-eslint-builtin/plugin" }
+tree-sitter-lint-plugin-eslint-builtin = { git = "https://github.com/helixbass/tree-sitter-lint-plugin-eslint-builtin", rev = "c0a7d4f" }
 unicode-segmentation = "1.10.1"
 
 [patch.crates-io]
