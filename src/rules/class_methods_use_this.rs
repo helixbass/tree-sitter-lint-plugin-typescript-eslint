@@ -13,9 +13,7 @@ use tree_sitter_lint_plugin_eslint_builtin::{
 };
 
 use crate::{
-    ast_helpers::{
-        get_accessibility_modifier, class_has_implements_clause, has_override_modifier,
-    },
+    ast_helpers::{class_has_implements_clause, get_accessibility_modifier, has_override_modifier},
     kind::PublicFieldDefinition,
 };
 
