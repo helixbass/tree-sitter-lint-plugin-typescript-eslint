@@ -9,7 +9,7 @@ use tree_sitter_lint::{
     QueryMatchContext, Rule,
 };
 
-use crate::ast_helpers::{get_is_type_literal, get_is_type_reference};
+use crate::ast_helpers::{is_type_literal, is_type_reference};
 
 #[derive(Builder, Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[builder(default, setter(strip_option, into))]
@@ -223,7 +223,7 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
             r#"
               (type_identifier) @c
             "# => |node, context| {
-                if !get_is_type_reference(node) {
+                if !is_type_reference(node) {
                     return;
                 }
 
@@ -254,7 +254,7 @@ pub fn ban_types_rule() -> Arc<dyn Rule> {
             r#"
               (object_type) @c
             "# => |node, context| {
-                if !get_is_type_literal(node) {
+                if !is_type_literal(node) {
                     return;
                 }
 

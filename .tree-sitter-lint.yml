@@ -13,22 +13,25 @@ rules:
         get_instance_provider_factory:
           module: crate
           kind: function
+        class_has_implements_clause:
+          module: crate::ast_helpers
+          kind: function
         get_accessibility_modifier:
           module: crate::ast_helpers
           kind: function
-        get_class_has_implements_clause:
+        has_override_modifier:
           module: crate::ast_helpers
           kind: function
-        get_has_override_modifier:
+        is_global_ambient_declaration:
           module: crate::ast_helpers
           kind: function
-        get_is_method_signature_static:
+        is_method_signature_static:
           module: crate::ast_helpers
           kind: function
-        get_is_type_literal:
+        is_type_literal:
           module: crate::ast_helpers
           kind: function
-        get_is_type_reference:
+        is_type_reference:
           module: crate::ast_helpers
           kind: function
         skip_parenthesized_types:
@@ -285,6 +288,9 @@ rules:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
         get_method_definition_kind:
+          module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
+          kind: function
+        is_export_default:
           module: tree_sitter_lint_plugin_eslint_builtin::ast_helpers
           kind: function
         is_simple_template_literal:
@@ -626,6 +632,9 @@ rules:
         YieldExpression:
           module: tree_sitter_lint_plugin_eslint_builtin::kind
           kind: static
+        range_between_end_and_start:
+          module: tree_sitter_lint
+          kind: function
         range_between_ends:
           module: tree_sitter_lint
           kind: function
