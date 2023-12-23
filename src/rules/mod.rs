@@ -7,6 +7,7 @@ mod class_literal_property_style;
 mod class_methods_use_this;
 mod consistent_generic_constructors;
 mod consistent_type_definitions;
+mod default_param_last;
 
 pub use adjacent_overload_signatures::adjacent_overload_signatures_rule;
 pub use array_type::array_type_rule;
@@ -17,3 +18,4 @@ pub use class_literal_property_style::class_literal_property_style_rule;
 pub use class_methods_use_this::class_methods_use_this_rule;
 pub use consistent_generic_constructors::consistent_generic_constructors_rule;
 pub use consistent_type_definitions::consistent_type_definitions_rule;
+pub use default_param_last::default_param_last_rule;
